@@ -20,6 +20,7 @@ class _Node:
         self.untried_actions = list(env.legal_actions)
         self.visits = 0
         self.value = 0.0
+        self.state = []
 
     def uct_score(self, explore_const: float = math.sqrt(2.0)) -> float:
         if self.visits == 0:
@@ -36,12 +37,17 @@ class _Node:
         reward = env.step(child.action)
         return child, reward
 
-    def _expand_random(self, env: SimpleEnv, rng: random.Random) -> tuple["_Node", float]:
-        a = rng.choice(self.untried_actions)
-        reward = env.step(a)
-        self.untried_actions.remove(a)
-        child = _Node(parent=self, action=a, env=env)
+    def _create_new_child(self, action: int, env: SimpleEnv) -> "_Node":
+        child = _Node(parent=self, action=action, env=env)
         self.children.append(child)
+        self.untried_actions.remove(action)
+        self.state = self.parent.state + [action]
+        return child
+    
+    def _expand(self, env: SimpleEnv, rng: random.Random) -> tuple["_Node", float]:
+        action = self.untried_actions.pop(0)
+        reward = env.step(action)
+        child = self._create_new_child(action, env)
         return child, reward
 
 
@@ -62,7 +68,7 @@ def uct_search(root_env: SimpleEnv, iterations: int = 1000, seed: Optional[int] 
                 node, reward = node._select_best_child(env)
             else:
                 # Expansion
-                node, reward = node._expand_random(env, rng)
+                node, reward = node._expand(env, rng)
             path.append(node.action)
 
         # Backpropagation

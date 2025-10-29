@@ -33,9 +33,6 @@ class SimpleEnv:
     def clone(self) -> "SimpleEnv":
         return copy.deepcopy(self)
 
-    def legal_actions(self) -> List[int]:
-        return list(range(self.branching))
-
     def step(self, action: int) -> float:
         """Apply action, advance depth, and return reward (if terminal) or 0.0.
 
@@ -51,3 +48,6 @@ class SimpleEnv:
 
     def is_terminal(self) -> bool:
         return self.depth >= self.max_depth
+    
+    def update(self, new_path):
+        return None

@@ -6,8 +6,8 @@ porting the C++ `ments` algorithm.
 """
 
 import math
-import numpy as np
 import random
+import numpy as np
 from typing import List, Optional
 
 from env import SimpleEnv
@@ -26,24 +26,17 @@ def _softmax(weights, rng: random.Random):
             return i
     return len(weights) - 1
 
-def f_tau(values, tau):
-    """
-    Soft indmax (Boltzmann distribution).
-    f_tau(r)(a) = exp(r(a)/tau) / sum_b exp(r(b)/tau)
-    Returns a probability distribution over actions.
-    """
-    values = np.array(values, dtype=float)
-    if len(values) == 0:
-        return np.array([])
-    exp_vals = np.exp(values / tau)
-    return exp_vals / np.sum(exp_vals)
+def f_tau(r, tau):
+    if len(r) == 0:
+        return 0.0
+    r = np.array(r, dtype=float)
+    return np.exp((r - F_tau(r, tau)) / tau)
 
-def F_tau(values, tau): 
-    """Softmax value: Fτ(r) = τ * log(Σ exp(r/τ)).""" 
-    values = np.array(values, dtype=float) 
-    if len(values) == 0: 
+def F_tau(r, tau) -> float: 
+    if len(r) == 0: 
         return 0.0 
-    return tau * np.log(np.sum(np.exp(values / tau)))
+    r = np.array(r, dtype=float)
+    return float(tau * np.log(sum(np.exp(r / tau))))
 
 class _Node:
     def __init__(self, parent: Optional["_Node"], action: Optional[int], env: SimpleEnv):
@@ -52,12 +45,10 @@ class _Node:
         self.env = env.clone()
         self.children: List[_Node] = []
         self.untried_actions = list(env.legal_actions)
+        self.valid_actions = list(env.legal_actions)
         self.visits = 0
-        self.value = 0.0
-        self.Qsft = dict.fromkeys(self.untried_actions, 0)
-
-    def average(self) -> float:
-        return self.value / self.visits if self.visits > 0 else 0.0
+        self.Qsft = 0
+        self.state = []
     
     def _exp_average_best_child(self, tempscale: float, env: SimpleEnv, rng:int) -> "_Node":
         weights = []
@@ -81,44 +72,54 @@ class _Node:
         self.children.append(child)
         return child, reward
     
-    def softmax_policy(self, tau, epsilon):
-        actions = list(self.Qsft.keys())
-        q_values = np.array([self.Qsft[a] for a in actions])
-
+    def _softmax_policy(self, temp: float, epsilon: float) -> tuple[List[float], List[int]]:
         # Soft indmax (Boltzmann) policy f_tau(Q)
-        soft_probs = f_tau(q_values, tau)
+        Qsft_children = [child.Qsft for child in self.children] + (len(self.valid_actions) - len(self.children)) * [0]
+        soft_probs = f_tau(Qsft_children, temp)
 
         # Add uniform mixing for exploration
-        lamb = epsilon * len(actions) / math.log(sum(self.visits) + 2)
+        visit_count = sum([child.visits for child in self.children])
+        lamb = epsilon * len(Qsft_children) / np.log(visit_count + 2)
         lamb = min(max(lamb, 0.0), 1.0)  # clamp to [0,1]
-        uniform = np.ones_like(soft_probs) / len(actions)
+        uniform = np.ones_like(soft_probs) / len(Qsft_children)
 
         # Mixed exploration policy π_t(a|s)
         mixed_policy = (1 - lamb) * soft_probs + lamb * uniform
-        return mixed_policy, actions
+        return mixed_policy
     
-    def select_action(self, tau, epsilon):
-        probs, actions = self.softmax_policy(tau, epsilon)
-        return np.random.choice(actions, p=probs)
+    def _select_action(self, temp: float, epsilon: float) -> int:
+        probs = self._softmax_policy(temp, epsilon)
+        return int(np.random.choice(self.valid_actions, p=probs))
     
+    def _create_new_child(self, action: int, env: SimpleEnv) -> "_Node":
+        child = _Node(parent=self, action=action, env=env)
+        self.children.append(child)
+        self.untried_actions.remove(action)
+        self.state = self.parent.state + [action]
+        return child
+    
+    def _get_node_by_action(self, action: int) -> Optional["_Node"]: 
+        return next((child for child in self.children if child.action == action), None)
 
-    def softmax_backup(self, reward):
-        child = self
-        while child.parent is not None:
-            node = child.parent
-            if child.Qsft:
-                soft_value = F_tau(list(child.Qsft.values()), self.tau)
-            else:
-                soft_value = 0.0
+    def _select_child(self, env: SimpleEnv, temp:float, epsilon: float) -> tuple["_Node", float]:
+        action = self._select_action(temp, epsilon)
+        reward = env.step(action)
+        selected_child = self._get_node_by_action(action)
+        if selected_child is None:
+            selected_child = self._create_new_child(action, env)
+        return selected_child, reward
 
-            target = reward + soft_value
-            node.visits += 1
-            node.Qsft[node.action] += (target - node.Qsft[child.action]) / node.visits
-            child = node
-            
+    def _softmax_backup(self, temp: float, reward: float, node: "_Node"):
+        self.Qsft = reward
+        node = node.parent
+        while node.parent:
+            child_values = [child.Qsft for child in node.children]
+            node.Qsft = F_tau(child_values, temp)
+            node = node.parent
+                
 
-def ments_search(root_env: SimpleEnv, iterations: int = 1000, base_temp: float = 1.0, decay: float = 0.01, seed: Optional[int] = None) -> int:
-    rng = random.Random(seed)
+def ments_search(root_env: SimpleEnv, iterations: int = 1000, base_temp: float = 1.0, decay: float = 0.01, epsilon: float = 0.2, seed: Optional[int] = None) -> int:
+    np.random.seed(seed)
     root = _Node(parent=None, action=None, env=root_env)
     max_reward = 0
     best_path = []
@@ -129,20 +130,13 @@ def ments_search(root_env: SimpleEnv, iterations: int = 1000, base_temp: float =
         path = []
 
         while not env.is_terminal():
-            if node.untried_actions == [] and node.children:
-                # Selection
-                tempscale = base_temp / (1.0 + decay * node.visits)
-                node, reward = node._select_exp_average_best_child(tempscale, env, rng)
-            else:
-                # Expansion
-                node, reward = node._expand_random(env, rng)
-            path.append(node.action)
+            # Selection
+            tempscale = base_temp / (1.0 + decay * node.visits)
+            node, reward = node._select_child(env, tempscale, epsilon)
+            path.append(node)
 
         # Backpropagation
-        while node is not None:
-            node.visits += 1
-            node.value += reward
-            node = node.parent
+        node._softmax_backup(tempscale, reward, node)
         
         if reward > max_reward:
             max_reward = reward

@@ -31,6 +31,15 @@ class KnapsackEnv:
     
     def get_path(self, nodes) -> List[Tuple[int, float]]:
         return [self.items[n.action] for n in nodes]
+    
+    def legal_mutation_actions(self, original_path, mutate_index):
+        used = sum(self.items[i][0] for i in original_path)
+        available = used - self.items[original_path[mutate_index]][0]
+        legal_actions = []
+        for action, item in enumerate(self.items):
+            if item[0] + available < self.capacity:
+                legal_actions.append(action)
+        return legal_actions
 
     def update_remaining_capacity(self) -> int:
         used = sum(self.items[i][0] for i in self.taken)
@@ -57,6 +66,13 @@ class KnapsackEnv:
             self.index = 0
             return float(self.total_value())
         return 0.0
+    
+    def mutate(self, new_path) -> float:
+        self.taken = new_path
+        self.update_remaining_capacity()
+        self.update_legal_actions()
+        return float(self.total_value())
+        
 
     def is_terminal(self) -> bool:
         return self.index >= len(self.items) or len(self.legal_actions)==0

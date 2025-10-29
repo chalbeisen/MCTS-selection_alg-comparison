@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: mcts
+Version: 0.1.0
+Summary: Python port of MCTS-selection_alg-comparison (core: env, nodes, UCT)
+Requires-Python: >=3.8
+License-File: LICENSE
+Dynamic: license-file
