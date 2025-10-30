@@ -17,9 +17,16 @@ from copy import copy
 
 class MMCTS_Node(_Node):
     def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int]):
-        super.__init__(parent, action, untried_actions)
+        super().__init__(parent, action, untried_actions)
         self._min_value = None
         self._max_value = None
+
+    def _create_new_child(self, action: int, env: SimpleEnv) -> "_Node":
+        untried_actions = self.update_untried_actions(action, env)
+        child = MMCTS_Node(parent=self, action=action, untried_actions=untried_actions)
+        self.children.append(child)
+        child.state = child.parent.state + [action] if child.parent else [action]
+        return child
     
     def _backpropagate(self, reward: float) -> None:
         self.visits += 1
@@ -37,7 +44,7 @@ class MMCTS_Node(_Node):
 def mmcts_search(root_env: SimpleEnv, iterations: int = 1000, uct_inf_softening: float = 2, base_temp: float = 5, decay: float = 0.05, p_max: float = 0.25, seed: Optional[int] = None) -> int:
     rng = random.Random(seed)
     torch.manual_seed(seed)
-    root = _Node(parent=None, action=None, untried_actions=list(root_env.legal_actions))
+    root = MMCTS_Node(parent=None, action=None, untried_actions=list(root_env.legal_actions))
     best_path = []
 
     node = root

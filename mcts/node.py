@@ -19,13 +19,14 @@ class _Node:
         parent_visits = self.parent.visits if self.parent else 1
         return (self.value / self.visits) + explore_const * math.sqrt(math.log(parent_visits) / self.visits)
 
-    def _create_new_child(self, action: int, env: SimpleEnv) -> "_Node":
+    def update_untried_actions(self, action: int, env: SimpleEnv) -> "_Node":
         if not self.state: 
             untried_actions = list(env.legal_actions)
         else:
             untried_actions = [a for a in env.legal_actions if a not in self.state]
         self.untried_actions.remove(action)
         untried_actions.remove(action)
+        return untried_actions
         child = _Node(parent=self, action=action, untried_actions=untried_actions)
         self.children.append(child)
         child.state = child.parent.state + [action] if child.parent else [action]
