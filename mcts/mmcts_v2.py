@@ -42,7 +42,7 @@ class MMCTS_Node(_Node):
         return
 
 
-def mmcts_search(root_env: SimpleEnv, iterations: int = 1000, uct_inf_softening: float = 2, base_temp: float = 5, decay: float = 0.05, p_max: float = 1.5, seed: Optional[int] = None) -> int:
+def mmcts_search(root_env: SimpleEnv, iterations: int = 1000, uct_inf_softening: float = 2, base_temp: float = 1000, decay: float = 0.05, p_max: float = 1.5, seed: Optional[int] = None) -> int:
     root = MMCTS_Node(parent=None, action=None, untried_actions=list(root_env.legal_actions))
     best_path = []
     best_iteration = 0

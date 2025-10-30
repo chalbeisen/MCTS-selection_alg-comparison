@@ -2,6 +2,7 @@ import uct
 import ments
 import tsp
 import mmcts_v2
+import dents_v2
 import random
 
 import numpy as np
@@ -25,6 +26,7 @@ if __name__ == "__main__":
     iterations = 100
     uct_res = {"best_path": [], "max_reward": [], "best_iter": []}
     ments_res = {"best_path": [], "max_reward": [], "best_iter": []}
+    dents_res = {"best_path": [], "max_reward": [], "best_iter": []}
     mmcts_res = {"best_path": [], "max_reward": [], "best_iter": []}
     for i in range(nr_of_runs):
         random.seed(i)
@@ -32,11 +34,13 @@ if __name__ == "__main__":
         tsp_env = tsp.TSPEnv(cities)
         best_path_uct, max_reward_uct, best_iteration_uct = uct.uct_search(tsp_env, iterations=iterations, seed=i)
         best_path_ments, max_reward_ments, best_iteration_ments = ments.ments_search(tsp_env, iterations=iterations, seed=i)
+        best_path_dents, max_reward_dents, best_iteration_dents = dents_v2.dents_search(tsp_env, iterations=iterations, seed=i)
         best_path_mmcts, max_reward_mmcts, best_iteration_mmcts = mmcts_v2.mmcts_search(tsp_env, iterations=iterations, seed=i)
 
         for res, path, reward, it in [
             (uct_res, best_path_uct, max_reward_uct, best_iteration_uct),
             (ments_res, best_path_ments, max_reward_ments, best_iteration_ments),
+            (dents_res, best_path_dents, max_reward_dents, best_iteration_dents),
             (mmcts_res, best_path_mmcts, max_reward_mmcts, best_iteration_mmcts),
         ]:
             res["best_path"] += [path]
@@ -47,6 +51,7 @@ if __name__ == "__main__":
 
     plt.hist(uct_res["max_reward"], bins=10, color='r', label='mcts')
     plt.hist(ments_res["max_reward"], bins=10, color='y', label='ments')
+    plt.hist(dents_res["max_reward"], bins=10, color='b', label='dents')
     plt.hist(mmcts_res["max_reward"], bins=10, color='g', label='mmcts')
     plt.xlabel("Minimum cost")
     plt.ylabel("Count")
@@ -57,6 +62,7 @@ if __name__ == "__main__":
 
     plt.hist(uct_res["best_iter"], bins=10, color='r', label='mcts_bestiter')
     plt.hist(ments_res["best_iter"], bins=10, color='y', label='ments_bestiter')
+    plt.hist(ments_res["best_iter"], bins=10, color='b', label='dents_bestiter')
     plt.hist(mmcts_res["best_iter"], bins=10, color='g', label='mmcts_bestiter')
     plt.xlabel("Iterations")
     plt.ylabel("Count")
