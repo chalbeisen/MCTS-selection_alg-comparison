@@ -27,7 +27,7 @@ class TSPEnv:
         return copy.deepcopy(self)
     
     def get_items_in_path(self, path: List[int]) -> List[Tuple[float,float]]:
-        return [self.cities[i] for i in path]
+        return [self.cities[i] for i in path] + [self.cities[path[0]]]
 
     def distance(self, a: int, b: int) -> float:
         """Euclidean distance between cities a and b."""
