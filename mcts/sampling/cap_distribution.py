@@ -19,7 +19,7 @@ def cap_distribution(p: torch.Tensor, p_max: float, eps: float = 1e-12) -> torch
 
     while True:
         # Find indices above p_max
-        over_max = p_out >= p_max
+        over_max = p_out > p_max
         if not over_max.any():
             break  # No probabilities exceed p_max
         if over_max.all():

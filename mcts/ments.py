@@ -13,20 +13,6 @@ from typing import List, Optional
 from env import SimpleEnv
 from node import _Node
 
-
-def _softmax(weights, rng: random.Random):
-    total = sum(weights)
-    if total <= 0:
-        # fallback to uniform
-        return rng.randrange(len(weights))
-    r = rng.random() * total
-    upto = 0.0
-    for i, w in enumerate(weights):
-        upto += w
-        if r <= upto:
-            return i
-    return len(weights) - 1
-
 def f_tau(r, tau):
     if len(r) == 0:
         return 0.0
@@ -47,6 +33,8 @@ class Ments_Node(_Node):
     def _softmax_policy(self, temp: float, epsilon: float) -> tuple[List[float], List[int]]:
         # Soft indmax (Boltzmann) policy f_tau(Q)
         Qsft_children = [child.Qsft for child in self.children] + len(self.untried_actions) * [0]
+        if (-np.inf) in Qsft_children:
+            print("test")
         actions = [child.action for child in self.children] + self.untried_actions
         soft_probs = f_tau(Qsft_children, temp)
 
@@ -85,16 +73,18 @@ class Ments_Node(_Node):
         while node.parent:
             child_values = [child.Qsft for child in node.children]
             node.Qsft = F_tau(child_values, temp)
+            if  F_tau(child_values, temp) in [-np.inf]:
+                print("test")
             node = node.parent
                 
 
-def ments_search(root_env: SimpleEnv, iterations: int = 1000, base_temp: float = 1.0, decay: float = 0.01, epsilon: float = 0.2, seed: Optional[int] = None) -> int:
-    np.random.seed(seed)
+def ments_search(root_env: SimpleEnv, iterations: int = 1000, base_temp: float = 100, decay: float = 0.05, epsilon: float = 0.2, seed: Optional[int] = None) -> int:
     root = Ments_Node(parent=None, action=None, untried_actions=list(root_env.legal_actions))
     max_reward = -np.inf
     best_path = []
+    best_iteration = 0
 
-    for it in range(iterations):
+    for i in range(iterations):
         node = root
         env = root_env.clone()
         path = []
@@ -111,9 +101,6 @@ def ments_search(root_env: SimpleEnv, iterations: int = 1000, base_temp: float =
         if reward > max_reward:
             max_reward = reward
             best_path = path
+            best_iteration = i
 
-    # return the most visited child action
-    if not root.children:
-        # no expansion happened; pick a legal action
-        return root_env.legal_actions[0]
-    return env.get_items_in_path(best_path)
+    return env.get_items_in_path(best_path), np.abs(max_reward), best_iteration

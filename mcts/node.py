@@ -10,7 +10,7 @@ class _Node:
         self.children: List[_Node] = []
         self.untried_actions = untried_actions
         self.visits = 0
-        self.value = None
+        self.value = 0
         self.state = []
 
     def uct_score(self, explore_const: float = math.sqrt(2.0)) -> float:

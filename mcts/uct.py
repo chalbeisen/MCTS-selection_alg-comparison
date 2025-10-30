@@ -5,28 +5,17 @@ point to port other algorithms from the C++ codebase.
 """
 
 import math
+import numpy as np
 import random
 from typing import List, Optional
 
 from env import SimpleEnv
+from node import _Node
 
 
-class _Node:
-    def __init__(self, parent: Optional["_Node"], action: Optional[int], env: SimpleEnv):
-        self.parent = parent
-        self.action = action
-        self.env = env.clone()
-        self.children: List[_Node] = []
-        self.untried_actions = list(env.legal_actions)
-        self.visits = 0
-        self.value = 0.0
-        self.state = []
-
-    def uct_score(self, explore_const: float = math.sqrt(2.0)) -> float:
-        if self.visits == 0:
-            return float("inf")
-        parent_visits = self.parent.visits if self.parent else 1
-        return (self.value / self.visits) + explore_const * math.sqrt(math.log(parent_visits) / self.visits)
+class UCT_Node(_Node):
+    def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int]):
+        super().__init__(parent, action, untried_actions)
 
     def _best_child(self) -> "_Node":
         child = max(self.children, key=lambda c: c.uct_score())
@@ -38,26 +27,20 @@ class _Node:
         return child, reward
 
     def _create_new_child(self, action: int, env: SimpleEnv) -> "_Node":
-        child = _Node(parent=self, action=action, env=env)
+        untried_actions = self.update_untried_actions(action, env)
+        child = UCT_Node(parent=self, action=action, untried_actions=untried_actions)
         self.children.append(child)
-        self.untried_actions.remove(action)
-        self.state = self.parent.state + [action]
+        child.state = child.parent.state + [action] if child.parent else [action]
         return child
-    
-    def _expand(self, env: SimpleEnv, rng: random.Random) -> tuple["_Node", float]:
-        action = self.untried_actions.pop(0)
-        reward = env.step(action)
-        child = self._create_new_child(action, env)
-        return child, reward
 
 
 def uct_search(root_env: SimpleEnv, iterations: int = 1000, seed: Optional[int] = None) -> int:
-    rng = random.Random(seed)
-    root = _Node(parent=None, action=None, env=root_env)
-    max_reward = 0
+    root = UCT_Node(parent=None, action=None, untried_actions=list(root_env.legal_actions))
+    max_reward = -np.inf
     best_path = []
+    best_iteration = 0
 
-    for _ in range(iterations):
+    for i in range(iterations):
         node = root
         env = root_env.clone()
         path = []
@@ -68,7 +51,7 @@ def uct_search(root_env: SimpleEnv, iterations: int = 1000, seed: Optional[int] 
                 node, reward = node._select_best_child(env)
             else:
                 # Expansion
-                node, reward = node._expand(env, rng)
+                node, reward = node._expand(env)
             path.append(node.action)
 
         # Backpropagation
@@ -80,9 +63,6 @@ def uct_search(root_env: SimpleEnv, iterations: int = 1000, seed: Optional[int] 
         if reward > max_reward:
             max_reward = reward
             best_path = path
+            best_iteration = i
 
-    # return the most visited child action
-    if not root.children:
-        # no expansion happened; pick a legal action
-        return root_env.legal_actions[0]
-    return env.get_path(best_path)
+    return env.get_items_in_path(best_path), np.abs(max_reward), best_iteration
