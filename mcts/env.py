@@ -9,10 +9,9 @@ It implements the minimum methods used by the UCT implementation:
 - is_terminal()
 
 """
-
 import copy
 import random
-from typing import List
+from typing import List, Tuple
 
 
 class SimpleEnv:
@@ -23,7 +22,6 @@ class SimpleEnv:
     terminal reward is sampled randomly (0.0 or 1.0) to allow stochastic
     rollouts.
     """
-
     def __init__(self, max_depth: int = 5, branching: int = 2, seed: int | None = None):
         self.max_depth = max_depth
         self.branching = branching
@@ -32,6 +30,9 @@ class SimpleEnv:
 
     def clone(self) -> "SimpleEnv":
         return copy.deepcopy(self)
+    
+    def get_items_in_path(self, path: List[int]) -> List[Tuple[float,float]]:
+        raise NotImplementedError("this method should be implemented by sublcasse")
 
     def step(self, action: int) -> float:
         """Apply action, advance depth, and return reward (if terminal) or 0.0.
@@ -49,5 +50,5 @@ class SimpleEnv:
     def is_terminal(self) -> bool:
         return self.depth >= self.max_depth
     
-    def update(self, new_path):
-        return None
+    def update(self, new_path: List[int]):
+        raise NotImplementedError("this method should be implemented by sublcasse")

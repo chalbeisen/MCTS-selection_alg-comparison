@@ -8,7 +8,7 @@ external/.DS_Store
 
 # Folders in other branches want to ignore
 python
-.pyc
+*.pyc
 
 # Hidden files
 .vscode
