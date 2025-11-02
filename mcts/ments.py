@@ -15,15 +15,18 @@ from node import _Node
 
 def f_tau(r, tau):
     r = np.array(r, dtype=float)
-    r_max = r.max()
-    exp_r = np.exp((r - r_max) / tau)
-    return exp_r / exp_r.sum()
+    if len(r) == 0:
+        return np.array([])
+    r_max = np.max(r)
+    exp_r = np.exp((r - r_max) / (tau + 1e-8))
+    return exp_r / (np.sum(exp_r) + 1e-8)
 
-def F_tau(r, tau) -> float: 
-    if len(r) == 0: 
-        return 0.0 
+def F_tau(r, tau) -> float:
+    if len(r) == 0:
+        return 0.0
     r = np.array(r, dtype=float)
-    return float(tau * np.log(sum(np.exp(r / tau))))
+    r_max = np.max(r)
+    return float(r_max + tau * np.log(np.sum(np.exp((r - r_max) / (tau + 1e-8)))))
 
 class Ments_Node(_Node):
     def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int]):
@@ -40,8 +43,9 @@ class Ments_Node(_Node):
 
         # Add uniform mixing for exploration
         visit_count = sum([child.visits for child in self.children])
-        lamb = epsilon * len(Qsft_children) / np.log(visit_count + 2)
-        lamb = min(max(lamb, 0.0), 1.0)  # clamp to [0,1]
+        """lamb = epsilon * len(Qsft_children) / np.log(visit_count + 2)
+        lamb = min(max(lamb, 0.0), 1.0)  # clamp to [0,1]"""
+        lamb = min(1.0, epsilon / max(1.0, np.log(np.e + self.visits)))
         uniform = np.ones_like(soft_probs) / len(Qsft_children)
 
         # Mixed exploration policy π_t(a|s)
@@ -68,15 +72,15 @@ class Ments_Node(_Node):
         return selected_child, reward
 
     def _backpropagate(self, temp: float, reward: float, node: "_Node"):
-        self.Qsft = reward
-        node = node.parent
-        while node.parent:
-            child_values = [child.Qsft for child in node.children]
-            node.Qsft = F_tau(child_values, temp)
-            node = node.parent
+        node.Qsft = reward
+        cur = node.parent
+        while cur is not None:
+            child_values = [child.Qsft for child in cur.children]
+            cur.Qsft = F_tau(child_values, temp)
+            cur = cur.parent
                 
 
-def ments_search(root_env: SimpleEnv, iterations: int = 1000, base_temp: float = 100, decay: float = 0.05, epsilon: float = 0.2, seed: Optional[int] = None) -> int:
+def ments_search(root_env: SimpleEnv, iterations: int = 1000, base_temp: float = 1000, decay: float = 0.05, epsilon: float = 1.0, seed: Optional[int] = None) -> int:
     root = Ments_Node(parent=None, action=None, untried_actions=list(root_env.legal_actions))
     max_reward = -np.inf
     best_path = []
