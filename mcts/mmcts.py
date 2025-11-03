@@ -90,6 +90,7 @@ class _Node:
         # self._results[result] += 1
         self._min_value = min(self._min_value, reward) if self._min_value is not None else reward
         self._max_value = max(self._max_value, reward) if self._max_value is not None else reward
+        self.edge_reward = reward
         if self.value is None:
             self.value = reward
         else:

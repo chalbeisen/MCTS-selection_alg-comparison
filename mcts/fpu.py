@@ -1,0 +1,93 @@
+"""
+UCT with First-Play Urgency (FPU)
+
+Extends basic UCT by assigning a finite FPU value instead of ∞ for unexplored moves.
+"""
+
+import math
+import random
+import numpy as np
+from typing import List, Optional
+
+from env import SimpleEnv
+from node import _Node
+
+
+class UCTNodeFPU(_Node):
+    def __init__(
+        self,
+        parent: Optional["_Node"],
+        action: Optional[int],
+        untried_actions: List[int],
+        fpu: float = 0.5,
+    ):
+        super().__init__(parent, action, untried_actions)
+        self.fpu = fpu  # First-play urgency
+
+    def uct_score(self, explore_const: float = math.sqrt(2.0)) -> float:
+        """UCT score modified to use FPU for unexplored nodes."""
+        if self.visits == 0:
+            return self.fpu  # Use FPU instead of infinity
+        parent_visits = self.parent.visits if self.parent else 1
+        return self.value + explore_const * math.sqrt(math.log(parent_visits + 1) / self.visits)
+
+    def _best_child(self, explore_const: float = math.sqrt(2.0)) -> "_Node":
+        return max(self.children, key=lambda c: c.uct_score(explore_const))
+
+    def _select_best_child(self, env: SimpleEnv) -> tuple["_Node", float]:
+        child = self._best_child()
+        reward = env.step(child.action)
+        return child, reward
+
+    def _create_new_child(self, action: int, env: SimpleEnv) -> "_Node":
+        untried_actions = self.update_untried_actions(action, env)
+        child = UCTNodeFPU(self, action, untried_actions, fpu=self.fpu)
+        self.children.append(child)
+        child.state = child.parent.state + [action] if child.parent else [action]
+        return child
+
+    def _backpropagate(self, reward: float) -> None:
+        self.visits += 1
+        self.value = (self.value * (self.visits - 1) + reward) / self.visits if self.visits > 1 else reward
+        if self.parent:
+            self.parent._backpropagate(reward)
+
+
+def uct_search_fpu(
+    root_env: SimpleEnv,
+    iterations: int = 1000,
+    fpu: float = 0.5,
+    explore_const: float = math.sqrt(2.0),
+    seed: Optional[int] = None,
+):
+    """UCT Search that uses a finite First-Play Urgency (FPU) value."""
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+
+    root = UCTNodeFPU(parent=None, action=None, untried_actions=list(root_env.legal_actions), fpu=fpu)
+
+    max_reward = -np.inf
+    best_path = []
+    best_iteration = 0
+
+    for i in range(iterations):
+        node = root
+        env = root_env.clone()
+        path = []
+
+        while not env.is_terminal():
+            if node.untried_actions == [] and node.children:
+                node, reward = node._select_best_child(env)
+            else:
+                node, reward = node._expand(env)
+            path.append(node.action)
+
+        node._backpropagate(reward)
+
+        if reward > max_reward:
+            max_reward = reward
+            best_path = path.copy()
+            best_iteration = i
+
+    return root, env.get_items_in_path(best_path), np.abs(max_reward), best_iteration

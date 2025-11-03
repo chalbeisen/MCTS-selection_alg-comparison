@@ -12,6 +12,7 @@ class _Node:
         self.visits = 0
         self.value = 0
         self.state = []
+        self.edge_reward = 0
 
     def uct_score(self, explore_const: float = math.sqrt(2.0)) -> float:
         if self.visits == 0:
@@ -27,10 +28,6 @@ class _Node:
         self.untried_actions.remove(action)
         untried_actions.remove(action)
         return untried_actions
-        child = _Node(parent=self, action=action, untried_actions=untried_actions)
-        self.children.append(child)
-        child.state = child.parent.state + [action] if child.parent else [action]
-        return child
     
     def _expand(self, env: SimpleEnv) -> tuple["_Node", float]:
         action = self.untried_actions[0]

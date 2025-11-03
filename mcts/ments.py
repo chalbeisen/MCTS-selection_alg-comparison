@@ -43,9 +43,9 @@ class Ments_Node(_Node):
 
         # Add uniform mixing for exploration
         visit_count = sum([child.visits for child in self.children])
-        """lamb = epsilon * len(Qsft_children) / np.log(visit_count + 2)
-        lamb = min(max(lamb, 0.0), 1.0)  # clamp to [0,1]"""
-        lamb = min(1.0, epsilon / max(1.0, np.log(np.e + self.visits)))
+        lamb = epsilon * len(Qsft_children) / np.log(visit_count + 2)
+        lamb = min(max(lamb, 0.0), 1.0)  # clamp to [0,1]
+        #lamb = min(1.0, epsilon / max(1.0, np.log(np.e + self.visits)))
         uniform = np.ones_like(soft_probs) / len(Qsft_children)
 
         # Mixed exploration policy π_t(a|s)
@@ -71,13 +71,53 @@ class Ments_Node(_Node):
             selected_child = self._create_new_child(action, env)
         return selected_child, reward
 
+    def _backpropagate_v2(self, reward: float, node: "_Node"):
+        """Hard (max) Bellman backup for sparse-reward environments."""
+        cur = node
+        while cur is not None:
+            if cur.children:
+                # Hard Bellman value update
+                child_qs = [child.q_value for child in cur.children]
+                cur.value = max(child_qs)
+            else:
+                # Leaf: its value is the (possibly nonzero) terminal reward
+                cur.value = reward  # or rollout result
+
+            # Sparse reward: most of the time cur.reward == 0
+            cur.q_value = reward + cur.value
+            cur.visits += 1
+            cur.edge_reward = reward
+            cur = cur.parent
+
     def _backpropagate(self, temp: float, reward: float, node: "_Node"):
         node.Qsft = reward
         cur = node.parent
         while cur is not None:
             child_values = [child.Qsft for child in cur.children]
             cur.Qsft = F_tau(child_values, temp)
+            cur.visits += 1
+            cur.edge_reward = reward
             cur = cur.parent
+
+    def _backpropagate_stochastic(self, temp: float, reward: float, node: "_Node"):
+        """
+        Backpropagate reward in a stochastic environment for MENTS.
+        node.Qsft stores the mean Q-value estimate for each node.
+        """
+        # Update this node's mean Q-value
+        node.visits += 1
+        node.Qsft = (node.Qsft * (node.visits - 1) + reward) / node.visits
+
+        cur = node.parent
+        while cur is not None:
+            cur.visits += 1  # increment parent visit
+
+            # Compute soft-max (F_tau) over child Q-values
+            child_values = [child.Qsft for child in cur.children]
+            cur.Qsft = F_tau(child_values, temp) if child_values else 0.0
+            cur.edge_reward = reward
+            cur = cur.parent
+
                 
 
 def ments_search(root_env: SimpleEnv, iterations: int = 1000, base_temp: float = 1000, decay: float = 0.05, epsilon: float = 1.0, seed: Optional[int] = None) -> int:
@@ -98,11 +138,11 @@ def ments_search(root_env: SimpleEnv, iterations: int = 1000, base_temp: float =
             path.append(node.action)
 
         # Backpropagation
-        node._backpropagate(tempscale, reward, node)
+        node._backpropagate_v2(reward, node)
         
         if reward > max_reward:
             max_reward = reward
-            best_path = path
+            best_path = path.copy()
             best_iteration = i
 
-    return env.get_items_in_path(best_path), np.abs(max_reward), best_iteration
+    return root, env.get_items_in_path(best_path), np.abs(max_reward), best_iteration

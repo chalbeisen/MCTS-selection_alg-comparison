@@ -33,6 +33,7 @@ class MMCTS_Node(_Node):
         self.visits += 1
         self._min_value = min(self._min_value, reward) if self._min_value is not None else reward
         self._max_value = max(self._max_value, reward) if self._max_value is not None else reward
+        self.edge_reward = reward
         if self.value is None:
             self.value = reward
         else:
@@ -40,7 +41,6 @@ class MMCTS_Node(_Node):
         if self.parent:
             self.parent._backpropagate(reward)
         return
-
 
 def mmcts_search(root_env: SimpleEnv, iterations: int = 1000, uct_inf_softening: float = 2, base_temp: float = 1000, decay: float = 0.05, p_max: float = 1.5, seed: Optional[int] = None) -> int:
     root = MMCTS_Node(parent=None, action=None, untried_actions=list(root_env.legal_actions))
@@ -90,7 +90,7 @@ def mmcts_search(root_env: SimpleEnv, iterations: int = 1000, uct_inf_softening:
                 best_path = proposed_path
                 best_iteration = i
 
-    return env.get_items_in_path(best_path), np.abs(max_reward), best_iteration
+    return root, env.get_items_in_path(best_path), np.abs(max_reward), best_iteration
 
 def mutate(original_path: List[int], mutate_index: int, mutate_value: float, env: SimpleEnv):
     path = copy(original_path)
@@ -100,8 +100,11 @@ def mutate(original_path: List[int], mutate_index: int, mutate_value: float, env
 
 def swap(original_path: List[int], new_index: int, new_value: float, env: SimpleEnv):
     path = copy(original_path)
-    old_index = next(i for i in range(len(original_path)) if original_path[i] == new_value)
-    path[old_index], path[new_index] = path[new_index], path[old_index]
+    if len(original_path) > 1: 
+        old_index = next(i for i in range(len(original_path)) if original_path[i] == new_value)
+        path[old_index], path[new_index] = path[new_index], path[old_index]
+    else:
+        path[new_index] = new_value
     reward = env.update(path)
     return path, reward
 

@@ -83,7 +83,7 @@ def beam_mcts_search(
             best_path = path.copy()
             best_iteration = i
 
-    return env.get_items_in_path(best_path), np.abs(best_reward), best_iteration
+    return root, env.get_items_in_path(best_path), np.abs(best_reward), best_iteration
 
 
 def prune_tree(root: BeamNode, depth: int, beam_width: int):

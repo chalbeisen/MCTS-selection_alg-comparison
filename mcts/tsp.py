@@ -9,10 +9,11 @@ Reward is returned only at terminal state (after returning to start).
 from typing import List, Tuple
 import math
 import copy
+import numpy as np
 
 
 class TSPEnv:
-    def __init__(self, cities: List[Tuple[float, float]]):
+    def __init__(self, cities: List[Tuple[float, float]], seed = 0):
         """Create a TSP environment.
 
         cities: list of (x, y) coordinates for each city.
@@ -22,6 +23,8 @@ class TSPEnv:
         self.current_city = None
         self.visited = []
         self.legal_actions = [i for i in range(len(cities))]
+        self.seed = seed
+        np.random.seed(seed)
 
     def clone(self) -> "TSPEnv":
         return copy.deepcopy(self)
@@ -33,7 +36,10 @@ class TSPEnv:
         """Euclidean distance between cities a and b."""
         x1, y1 = self.cities[a]
         x2, y2 = self.cities[b]
-        return math.hypot(x2 - x1, y2 - y1)
+        distance = math.hypot(x2 - x1, y2 - y1)
+        noise = np.random.normal(0, distance*0.5)
+        #return max(0.1, distance + noise)
+        return distance
 
     def total_distance(self) -> float:
         """Compute total distance of the full tour (returning to start)."""

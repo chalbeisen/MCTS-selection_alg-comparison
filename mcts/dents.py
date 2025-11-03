@@ -9,7 +9,7 @@ testing and comparison.
 import random
 from typing import List, Optional
 
-from .env import SimpleEnv
+from env import SimpleEnv
 
 
 class _Node:
