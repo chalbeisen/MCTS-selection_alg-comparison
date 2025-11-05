@@ -16,8 +16,6 @@ from node import _Node
 class UCT_Node(_Node):
     def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int]):
         super().__init__(parent, action, untried_actions)
-        self._min_value = None
-        self._max_value = None
 
     def _best_child(self) -> "_Node":
         child = max(self.children, key=lambda c: c.uct_score())
@@ -37,8 +35,6 @@ class UCT_Node(_Node):
     
     def _backpropagate(self, reward: float) -> None:
         self.visits += 1
-        self._min_value = min(self._min_value, reward) if self._min_value is not None else reward
-        self._max_value = max(self._max_value, reward) if self._max_value is not None else reward
         self.edge_reward = reward
         if self.value is None:
             self.value = reward

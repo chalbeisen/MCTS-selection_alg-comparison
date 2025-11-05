@@ -48,19 +48,22 @@ class UCTNodeFPU(_Node):
 
     def _backpropagate(self, reward: float) -> None:
         self.visits += 1
-        self.value = (self.value * (self.visits - 1) + reward) / self.visits if self.visits > 1 else reward
+        self.edge_reward = reward
+        if self.value is None:
+            self.value = reward
+        else:
+            self.value = (self.value * (self.visits - 1) + reward) / self.visits
         if self.parent:
             self.parent._backpropagate(reward)
+        return
 
 
 def uct_search_fpu(
     root_env: SimpleEnv,
     iterations: int = 1000,
     fpu: float = 0.5,
-    explore_const: float = math.sqrt(2.0),
     seed: Optional[int] = None,
 ):
-    """UCT Search that uses a finite First-Play Urgency (FPU) value."""
     if seed is not None:
         random.seed(seed)
         np.random.seed(seed)
