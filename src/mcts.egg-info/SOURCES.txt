@@ -1,9 +1,0 @@
-LICENSE
-README.md
-pyproject.toml
-src/mcts.egg-info/PKG-INFO
-src/mcts.egg-info/SOURCES.txt
-src/mcts.egg-info/dependency_links.txt
-src/mcts.egg-info/top_level.txt
-tests/test_algs.py
-tests/test_basic.py

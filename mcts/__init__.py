@@ -5,7 +5,7 @@ Expose core modules: env, distributions, uct
 
 from .env import SimpleEnv
 from .distributions import CategoricalDistribution
-from .uct import uct_search
-from .knapsack import KnapsackEnv
+from .mcts.mcts import uct_search
+from .env.knapsack import KnapsackEnv
 
 __all__ = ["SimpleEnv", "CategoricalDistribution", "uct_search", "KnapsackEnv"]

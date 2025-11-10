@@ -1,11 +1,11 @@
-import uct
-import ments
-import tsp
-import mmcts_v2
-import dents_v2
-import node
-import beam
-import fpu
+import mcts.mcts.mcts as mcts
+import mcts.SoTA.ments as ments
+import mcts.env.tsp as tsp
+import mcts.SoTA.mmcts as mmcts
+import mcts.SoTA.dents as dents
+import mcts.mcts.node as node
+import mcts.SoTA.beam as beam
+import mcts.SoTA.fpu as fpu
 
 import random
 import os
@@ -47,13 +47,12 @@ def draw_tree(root: node._Node, filename="tree", max_depth: int = 3):
     dot.render(filename, format="png", cleanup=True)
     print(f"Tree saved as {filename}.png")
 
-def box_plot(data, yerrors, title, ylabel, labels, colors, figsize = (8,6), save_path = None):
+def box_plot(data, yerrors, ylabel, labels, colors, figsize = (8,6), save_path = None):
     plt.figure(figsize=figsize)
     for d, yerr, l, c in zip(data, yerrors, labels, colors):
         plt.bar(l, d, yerr=yerr, capsize=10, color=c, label=l)
 
     plt.ylabel(ylabel, fontsize=18)
-    plt.title(title, fontsize=24)
     plt.xticks(fontsize=18)
     plt.yticks(fontsize=16)
     plt.tight_layout()
@@ -65,7 +64,7 @@ def box_plot(data, yerrors, title, ylabel, labels, colors, figsize = (8,6), save
         print(f"Saved box plot to {save_path}")
     plt.show()
 
-def hist_plot(data, colors, xlabel, ylabel, labels, title = None, bins = 10, figsize = (8,6), save_path = f"{output_dir}/mean_max_reward.png", bin_width = 1.0):
+def hist_plot(data, colors, xlabel, ylabel, labels, title = None, bins = 10, figsize = (8,6), save_path = f"{output_dir}/mean_best_reward.png", bin_width = 20.0):
     plt.figure(figsize=figsize)
 
     all_data = np.concatenate(data)
@@ -80,8 +79,6 @@ def hist_plot(data, colors, xlabel, ylabel, labels, title = None, bins = 10, fig
 
     plt.xlabel(xlabel, fontsize=18)
     plt.ylabel(ylabel, fontsize=18)
-    if title:
-        plt.title(title, fontsize=24)
     plt.xticks(fontsize=18)
     plt.yticks(fontsize=16)
     plt.legend(fontsize=14)
@@ -116,34 +113,34 @@ if __name__ == "__main__":
     decay = 0.0
     epsilon = 2.0
 
-    uct_res = {"best_path": [], "max_reward": [], "best_iter": []}
-    ments_res = {"best_path": [], "max_reward": [], "best_iter": []}
-    dents_res = {"best_path": [], "max_reward": [], "best_iter": []}
-    mmcts_res = {"best_path": [], "max_reward": [], "best_iter": []}
-    fpu_res = {"best_path": [], "max_reward": [], "best_iter": []}
-    beam_res = {"best_path": [], "max_reward": [], "best_iter": []}
+    uct_res = {"best_path": [], "best_reward": [], "best_iter": []}
+    ments_res = {"best_path": [], "best_reward": [], "best_iter": []}
+    dents_res = {"best_path": [], "best_reward": [], "best_iter": []}
+    mmcts_res = {"best_path": [], "best_reward": [], "best_iter": []}
+    fpu_res = {"best_path": [], "best_reward": [], "best_iter": []}
+    beam_res = {"best_path": [], "best_reward": [], "best_iter": []}
 
     for i in range(nr_of_runs):
         random.seed(i)
         random.shuffle(cities)
         tsp_env = tsp.TSPEnv(cities, seed=i)
 
-        root_uct, best_path_uct, max_reward_uct, best_iteration_uct = uct.uct_search(
+        root_uct, best_path_uct, best_reward_uct, best_iteration_uct = mcts.uct_search(
             tsp_env, iterations=iterations, seed=i
         )
-        root_ments, best_path_ments, max_reward_ments, best_iteration_ments = ments.ments_search(
+        root_ments, best_path_ments, best_reward_ments, best_iteration_ments = ments.ments_search(
             tsp_env, iterations=iterations, seed=i, base_temp=base_temp, decay=decay, epsilon=epsilon
         )
-        root_dents, best_path_dents, max_reward_dents, best_iteration_dents = dents_v2.dents_search(
+        root_dents, best_path_dents, best_reward_dents, best_iteration_dents = dents.dents_search(
             tsp_env, iterations=iterations, seed=i, base_temp=base_temp, decay=decay, epsilon=epsilon
         )
-        root_mmcts, best_path_mmcts, max_reward_mmcts, best_iteration_mmcts = mmcts_v2.mmcts_search(
+        root_mmcts, best_path_mmcts, best_reward_mmcts, best_iteration_mmcts = mmcts.mmcts_search(
             tsp_env, iterations=iterations, seed=i, base_temp=base_temp, decay=decay
         )
-        root_fpu, best_path_fpu, max_reward_fpu, best_iteration_fpu = fpu.uct_search_fpu(
+        root_fpu, best_path_fpu, best_reward_fpu, best_iteration_fpu = fpu.uct_search_fpu(
             tsp_env, iterations=iterations, seed=i, 
         )
-        root_beam, best_path_beam, max_reward_beam, best_iteration_beam = beam.beam_mcts_search(
+        root_beam, best_path_beam, best_reward_beam, best_iteration_beam = beam.beam_mcts_search(
             tsp_env, iterations=iterations, seed=i, beam_width=5
         )
 
@@ -155,43 +152,43 @@ if __name__ == "__main__":
         draw_tree(root_beam, filename=f"tree_beam_run{i}", max_depth=len(cities))"""
 
         for res, path, reward, it in [
-            (uct_res, best_path_uct, max_reward_uct, best_iteration_uct),
-            (ments_res, best_path_ments, max_reward_ments, best_iteration_ments),
-            (dents_res, best_path_dents, max_reward_dents, best_iteration_dents),
-            (mmcts_res, best_path_mmcts, max_reward_mmcts, best_iteration_mmcts),
-            (fpu_res, best_path_fpu, max_reward_fpu, best_iteration_fpu),
-            (beam_res, best_path_beam, max_reward_beam, best_iteration_beam)
+            (uct_res, best_path_uct, best_reward_uct, best_iteration_uct),
+            (ments_res, best_path_ments, best_reward_ments, best_iteration_ments),
+            (dents_res, best_path_dents, best_reward_dents, best_iteration_dents),
+            (mmcts_res, best_path_mmcts, best_reward_mmcts, best_iteration_mmcts),
+            (fpu_res, best_path_fpu, best_reward_fpu, best_iteration_fpu),
+            (beam_res, best_path_beam, best_reward_beam, best_iteration_beam)
         ]:
             res["best_path"].append(path)
-            res["max_reward"].append(reward)
+            res["best_reward"].append(reward)
             res["best_iter"].append(it)
 
     means = [
-        np.mean(uct_res["max_reward"]),
-        np.mean(ments_res["max_reward"]),
-        np.mean(dents_res["max_reward"]),
-        np.mean(fpu_res["max_reward"]),
-        np.mean(beam_res["max_reward"]),
-        np.mean(mmcts_res["max_reward"]),
+        np.mean(uct_res["best_reward"]),
+        np.mean(ments_res["best_reward"]),
+        np.mean(dents_res["best_reward"]),
+        np.mean(fpu_res["best_reward"]),
+        np.mean(beam_res["best_reward"]),
+        np.mean(mmcts_res["best_reward"]),
     ]
     errors = [
-        np.std(uct_res["max_reward"]),
-        np.std(ments_res["max_reward"]),
-        np.std(dents_res["max_reward"]),
-        np.std(fpu_res["max_reward"]),
-        np.std(beam_res["max_reward"]),
-        np.std(mmcts_res["max_reward"]),
+        np.std(uct_res["best_reward"]),
+        np.std(ments_res["best_reward"]),
+        np.std(dents_res["best_reward"]),
+        np.std(fpu_res["best_reward"]),
+        np.std(beam_res["best_reward"]),
+        np.std(mmcts_res["best_reward"]),
     ]
 
     box_plot(
-        means, errors, title='Mean Max Reward with Std Dev',
+        means, errors,
         ylabel='Mean Max Reward', labels=labels, colors=colors_box_plot,
-        save_path=f"{output_dir}/mean_max_reward.png"
+        save_path=f"{output_dir}/mean_best_reward.png"
     )
 
     data_rewards = [
-        uct_res["max_reward"], ments_res["max_reward"], dents_res["max_reward"],
-        fpu_res["max_reward"], beam_res["max_reward"], mmcts_res["max_reward"],
+        uct_res["best_reward"], ments_res["best_reward"], dents_res["best_reward"],
+        fpu_res["best_reward"], beam_res["best_reward"], mmcts_res["best_reward"],
     ]
     hist_plot(
         data_rewards, colors_hist_plot, xlabel="Minimum cost", ylabel="Count",

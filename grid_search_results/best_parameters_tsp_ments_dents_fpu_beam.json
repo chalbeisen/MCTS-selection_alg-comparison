@@ -1,0 +1,29 @@
+{
+  "ments": {
+    "base_temp": 1.0,
+    "decay": 0.0001,
+    "epsilon": 0.1,
+    "base_beta": 1.0,
+    "best_distance": 958.1382364896044,
+    "best_iter": 989
+  },
+  "dents": {
+    "base_temp": 1.0,
+    "decay": 0.0001,
+    "epsilon": 0.1,
+    "base_beta": 0.5,
+    "best_distance": 885.6634840273153,
+    "best_iter": 244
+  },
+  "fpu": {
+    "fpu": 0.1,
+    "best_distance": 485.1302004155999,
+    "best_iter": 85
+  },
+  "beam": {
+    "beam_width": 30,
+    "sim_limit": 50,
+    "best_distance": 485.1302004155999,
+    "best_iter": 85
+  }
+}
