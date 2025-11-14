@@ -34,7 +34,7 @@ class Dents_Node(_Node):
         if len(actions) == 0:
             return np.array([]), []
         
-        beta_val = beta(self.visits)
+        beta_val = beta(self.visits, temp)
         Qs = np.array([self.Q_hat.get(a, 0.0) for a in actions])
         Hs = np.array([self.HQ.get(a, 0.0) for a in actions])
         # equation 21

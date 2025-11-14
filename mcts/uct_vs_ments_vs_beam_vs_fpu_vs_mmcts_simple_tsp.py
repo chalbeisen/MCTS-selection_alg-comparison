@@ -12,34 +12,32 @@ import matplotlib.pyplot as plt
 
 from eval.utils import *
 
-colors_box_plot = [ "#FFFFFF00", "#09a93e3e", "#09a93e8c", "#09a93ea7", "#09a93ed3", "#09a93e",]
-colors_hist_plot = [ "#FFFFFF00", "#09a93e3e", "#09a93e8c", "#09a93ea7", "#09a93ed3", "#09a93e",]
-edgecolor = ["#3838ff", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF"]
-patterns = [ "", "/" , "\\" , "-" , "x" , "" ]
+colors_box_plot = ["#09a93e3e", "#09a93e8c", "#09a93ea7", "#09a93ed3", "#09a93e", "#FFFFFF00"]
+colors_hist_plot = ["#09a93e3e", "#09a93e8c", "#09a93ea7", "#09a93ed3", "#09a93e", "#FFFFFF00"]
+edgecolor = ["#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#3838ff"]
+patterns = [ "/" , "\\" , "-" , "x" , "" , "" ]
 output_dir = "results/plots"
 
 if __name__ == "__main__":
-    nr_of_runs = 50
+    nr_of_runs = 5
     cities = [
     # Cluster A (around 0, 0)
-    (0, 0), (1, 0), (0, 1), (1, 1), (2, 0), (0, 2),
+    (0, 0),
     # Cluster B (around 50, 0)
-    (50, 0), (51, 0), (50, 1), (51, 1), (52, 0), (50, 2),
-    # Cluster C (around 0, 50)
-    (0, 50), (1, 50), (0, 51), (1, 51), (2, 50), (0, 52),
-    # Cluster D (around 50, 50)
-    (50, 50), (51, 50), (50, 51), (51, 51), (52, 50), (50, 52),
+    (50, 0), (51, 0),
+    # Cluster C (around 50, 50)
+    (50, 50),
     # Far distractor cities
     (100, 25), (25, 100), (75, -20)
     ]
 
-    iterations = 1000
+    iterations = 100
     base_temp = 1
     decay = 0.0
     epsilon = 2.0
 
     search_algorithms = {
-        "MCTS": (mcts.uct_search, {}),
+        "UCT": (mcts.uct_search, {}),
         "MENTS": (ments.ments_search, {'base_temp': 0.1, 'decay': 0.0001, 'epsilon': 0.1}),
         "DENTS": (dents.dents_search, {'base_temp': 0.1, 'decay': 0.0001, 'epsilon': 0.1}),
         "FPU": (fpu.uct_search_fpu, {'fpu': 0.1}),
@@ -47,15 +45,20 @@ if __name__ == "__main__":
         "MMCTS": (mmcts.mmcts_search, {'base_temp': 1.0, 'decay': 0.0001, 'uct_inf_softening': 5, 'p_max': 1.5}),
     }
     labels = search_algorithms.keys()
-    results = {name: {"best_path": [], "best_reward": [], "best_iter": []} for name in search_algorithms}
+    results = {name: {"best_path": [], "best_reward": [], "best_iter": [], "root": []} for name in search_algorithms}
     means = []
     errors = []
     best_rewards = []
     best_iters = []
+    best_paths = []
+
+    seed = 1
+    random.seed(seed)
+    random.shuffle(cities)
+    for action_id, c in enumerate(cities):
+        print(f"{action_id}: {c}", )
+    tsp_env = tsp.TSPEnv(cities, seed=seed)
     for i in range(nr_of_runs):
-        random.seed(i)
-        random.shuffle(cities)
-        tsp_env = tsp.TSPEnv(cities, seed=i)
 
         for name, (search_fn, params) in search_algorithms.items():
             root, best_path, best_reward, best_iter = search_fn(
@@ -66,13 +69,18 @@ if __name__ == "__main__":
             results[name]["best_path"].append(best_path)
             results[name]["best_reward"].append(best_reward)
             results[name]["best_iter"].append(best_iter/iterations * 100)
+            results[name]["root"].append(root)
 
-            #draw_tree(root, filename=f"tree_{name}_run{i}", max_depth=len(cities))
 
-    for name, (search_fn, params) in search_algorithms.items():
+    for name in search_algorithms.keys():
+        best_path_index, _ = min(enumerate(results[name]["best_reward"]), key=lambda x: x[1])
+        best_path = [None]+results[name]["best_path"][best_path_index][:-1]
         means.append(np.mean(results[name]["best_reward"]))
         errors.append(np.std(results[name]["best_reward"]))
         best_iters.append(results[name]["best_iter"])
+        print(name)
+        print([None]+results[name]["best_path"][best_path_index][:-1])
+        draw_tree(results[name]["root"][best_path_index], tsp_env, filename=f"tree_{name}", max_depth=len(cities), best_path=best_path)
 
     box_plot(
         means, errors,

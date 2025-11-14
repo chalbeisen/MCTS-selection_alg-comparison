@@ -31,6 +31,9 @@ class SimpleEnv:
     def clone(self) -> "SimpleEnv":
         return copy.deepcopy(self)
     
+    def get_action(self, i):
+        raise NotImplementedError("this method should be implemented by sublcasse")
+    
     def get_items_in_path(self, path: List[int]) -> List[Tuple[float,float]]:
         raise NotImplementedError("this method should be implemented by sublcasse")
 

@@ -24,6 +24,9 @@ class JobSchedulingEnv:
 
     def clone(self) -> "JobSchedulingEnv":
         return copy.deepcopy(self)
+    
+    def get_action(self, i) -> Tuple[int, float]:
+        return self.jobs[i]
 
     def get_schedule(self, nodes) -> List[Tuple[int, float]]:
         return [self.jobs[n.action] for n in nodes]

@@ -29,6 +29,9 @@ class KnapsackEnv:
     def clone(self) -> "KnapsackEnv":
         return copy.deepcopy(self)
     
+    def get_action(self, i) -> int:
+        return self.items[i]
+    
     def get_path(self, nodes) -> List[Tuple[int, float]]:
         return [self.items[n.action] for n in nodes]
     

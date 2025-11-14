@@ -30,10 +30,9 @@ dir = "./grid_search_results"
 
 # Hyperparameter grid
 # MENTS/DENTS
-base_temps = [1.0, 5.0, 10.0, 20.0, 30.0, 40.0]
-decays = [0.0001, 0.001, 0.01]
-epsilons = [0.1, 0.5, 1.0]
-base_betas = [0.5, 1.0, 2.0]
+base_temps = [0.1, 0.2, 0.5, 1.0]
+decays = [0.000001, 0.00001, 0.0001]
+epsilons = [0.01, 0.05, 0.1]
 # FPU
 fpu_constants = [0.1, 0.5, 1, 2, 5, 10]
 # BEAM MCTS SEARCH
@@ -58,7 +57,7 @@ torch.cuda.manual_seed_all(seed)
 # Grid search
 
 # MENTS, DENTS
-for base_temp, decay, epsilon, base_beta in itertools.product(base_temps, decays, epsilons, base_betas):
+for base_temp, decay, epsilon in itertools.product(base_temps, decays, epsilons):
     root_ments, best_path_ments, best_reward_ments, best_iteration_ments = ments_search(
         root_env=env, 
         iterations=iterations, 
@@ -74,14 +73,13 @@ for base_temp, decay, epsilon, base_beta in itertools.product(base_temps, decays
         base_temp=base_temp,
         decay=decay,
         epsilon=epsilon,
-        seed=seed 
+        seed=seed,
     )
 
     results_ments.append({
         "base_temp": base_temp,
         "decay": decay,
         "epsilon": epsilon,
-        "base_beta": base_beta,
         "best_distance": best_reward_ments, 
         "best_iter": best_iteration_ments
     })
@@ -89,12 +87,11 @@ for base_temp, decay, epsilon, base_beta in itertools.product(base_temps, decays
         "base_temp": base_temp,
         "decay": decay,
         "epsilon": epsilon,
-        "base_beta": base_beta,
         "best_distance": best_reward_dents, 
         "best_iter": best_iteration_dents
     })
-    print(f"MENTS base_temp={base_temp}, decay={decay}, epsilon={epsilon}, base_beta={base_beta} => distance={best_reward_ments:.3f}")
-    print(f"DENTS base_temp={base_temp}, decay={decay}, epsilon={epsilon}, base_beta={base_beta} => distance={best_reward_dents:.3f}")
+    print(f"MENTS base_temp={base_temp}, decay={decay}, epsilon={epsilon} => distance={best_reward_ments:.3f}")
+    print(f"DENTS base_temp={base_temp}, decay={decay}, epsilon={epsilon} => distance={best_reward_dents:.3f}")
 
 # FPU
 for fpu in fpu_constants:
@@ -129,7 +126,7 @@ for (beam_width, sim_limit) in zip(beam_widths, sim_limits):
     print(f"BEAM MCTS beam_width={beam_width}, sim_limit={sim_limit} => distance={best_reward_beam:.3f}")
 
 # MMCTS
-for base_temp, decay, base_beta, uct_inf_softening, p_max in itertools.product(base_temps, decays, base_betas, uct_inf_softenings, p_maxs):
+for base_temp, decay, uct_inf_softening, p_max in itertools.product(base_temps, decays, uct_inf_softenings, p_maxs):
     root_mmcts, best_path_mmcts, best_reward_mmcts, best_iteration_mmcts = mmcts_search(
         root_env=env,
         iterations=iterations,   
@@ -148,7 +145,7 @@ for base_temp, decay, base_beta, uct_inf_softening, p_max in itertools.product(b
         "best_distance": best_reward_mmcts, 
         "best_iter": best_iteration_mmcts
     })
-    print(f"MMCTS base_temp={base_temp}, decay={decay}, epsilon={epsilon}, base_beta={base_beta}, uct_inf_softening={uct_inf_softening}, p_max={p_max} => distance={best_reward_mmcts:.3f}")
+    print(f"MMCTS base_temp={base_temp}, decay={decay}, epsilon={epsilon}, uct_inf_softening={uct_inf_softening}, p_max={p_max} => distance={best_reward_mmcts:.3f}")
 
 # Find best params
 best_results = {}

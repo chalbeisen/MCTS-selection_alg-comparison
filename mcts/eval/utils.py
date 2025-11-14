@@ -1,0 +1,85 @@
+import mcts.node as node
+import os
+import numpy as np
+
+import matplotlib.pyplot as plt
+
+from graphviz import Digraph
+from env.env import SimpleEnv
+from typing import List, Tuple
+
+def draw_tree(root: node._Node, env: SimpleEnv, filename="tree", max_depth: int = 3, best_path: List[Tuple[int, int]] = None):
+    """
+    Draw a UCT tree up to a maximum depth.
+    
+    root: UCT_Node
+    filename: output file name without extension
+    max_depth: limit depth to avoid huge trees
+    """
+    dot = Digraph(comment='Tree')
+    
+    def add_node(node: node._Node, parent_id: str = None, depth: int = 0., patterns = None, best_path = None):
+        if depth > max_depth:
+            return
+        node_id = str(id(node))
+        action = env.get_action(node.action) if node.action is not None else None
+        label = f"Action: {action}\nVisits: {node.visits}\nValue: {node.edge_reward:.2f}"
+        is_along_best_path = best_path is not None and action == best_path[0]
+        color = "red" if is_along_best_path else "black"
+        dot.node(node_id, label, style="filled", penwidth="2", color = color, fillcolor="white")
+        if parent_id is not None:
+            dot.edge(parent_id, node_id)
+        for child in node.children:
+            next_path = best_path[1:] if is_along_best_path else None
+            add_node(child, node_id, depth + 1, best_path=next_path)
+    
+    add_node(root, best_path=best_path)
+    dot.render(filename, format="png", cleanup=True)
+    print(f"Tree saved as {filename}.png")
+
+
+def box_plot(data, yerrors, ylabel, labels, colors, edgecolor, figsize = (8,6), save_path = None, patterns = None):
+    plt.figure(figsize=figsize)
+    for i, (d, yerr, l, c, e) in enumerate(zip(data, yerrors, labels, colors, edgecolor)):
+        if patterns is not None:
+            plt.bar(x = l, height = d, label = l, yerr=yerr, capsize=10, color=c, edgecolor = e, lw=2., hatch = patterns[i], zorder = 0)
+        else:
+            plt.bar(l, d, yerr=yerr, capsize=10, color='none', label=l)
+
+    plt.ylabel(ylabel, fontsize=18)
+    plt.xticks(fontsize=18)
+    plt.yticks(fontsize=16)
+    plt.tight_layout()
+
+
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Saved box plot to {save_path}")
+    plt.show()
+
+def hist_plot(data, colors, xlabel, ylabel, labels, edgecolor, title = None, bins = 10, figsize = (8,6), save_path = None, bin_width = 20.0, patterns = None):
+    plt.figure(figsize=figsize)
+
+    all_data = np.concatenate(data)
+    if bin_width is not None:
+        min_val, max_val = np.min(all_data), np.max(all_data)
+        bins = np.arange(min_val, max_val + bin_width, bin_width)
+    else:
+        _, bins = np.histogram(all_data, bins=bins)
+
+    plt.hist(x = data, bins=bins, color = colors, label=labels, edgecolor = edgecolor, lw=2., hatch = patterns, zorder = 0)
+
+    plt.xlabel(xlabel, fontsize=18)
+    plt.ylabel(ylabel, fontsize=18)
+    plt.xticks(fontsize=18)
+    plt.yticks(fontsize=16)
+    plt.legend(fontsize=14)
+    plt.tight_layout()
+
+    if save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        plt.savefig(save_path, dpi=300, bbox_inches='tight')
+        print(f"Saved histogram to {save_path}")
+
+    plt.show()
