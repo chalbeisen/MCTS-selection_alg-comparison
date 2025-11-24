@@ -66,3 +66,7 @@ thts-run-toy-env
 *.exe
 *.out
 *.app
+
+# Image/Video files
+*.png
+*.mp4*

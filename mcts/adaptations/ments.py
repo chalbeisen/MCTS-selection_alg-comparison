@@ -114,7 +114,7 @@ class Ments_Node(_Node):
                 
 
 def ments_search(root_env: Env, iterations: int = 1000, base_temp: float = 1000, decay: float = 0.05, epsilon: float = 1.0, seed: Optional[int] = None) -> int:
-    root = Ments_Node(parent=None, action=None, untried_actions=root_env.get_legal_actions(None))
+    root = Ments_Node(parent=None, action=None, untried_actions=root_env.get_legal_actions())
     max_reward = -np.inf
     best_path = []
     best_iteration = 0

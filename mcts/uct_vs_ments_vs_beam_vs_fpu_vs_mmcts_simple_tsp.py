@@ -31,7 +31,7 @@ if __name__ == "__main__":
     (100, 25), (25, 100), (75, -20)
     ]
 
-    iterations = 100
+    iterations = 50
     base_temp = 1
     decay = 0.0
     epsilon = 2.0
@@ -52,16 +52,13 @@ if __name__ == "__main__":
     best_iters = []
     best_paths = []
 
-    seed = 1
+    seed = 0
     random.seed(seed)
-    random.shuffle(cities)
-    for action_id, c in enumerate(cities):
-        print(f"{action_id}: {c}", )
     tsp_env = tsp.TSPEnv(cities, seed=seed)
-    for i in range(nr_of_runs):
+    for i in range(nr_of_runs): 
 
         for name, (search_fn, params) in search_algorithms.items():
-            root, best_path, best_reward, best_iter = search_fn(
+            root, best_path, best_reward, best_iter, _ = search_fn(
                 tsp_env, iterations=iterations, seed=i, **params
             )
 
@@ -78,9 +75,7 @@ if __name__ == "__main__":
         means.append(np.mean(results[name]["best_reward"]))
         errors.append(np.std(results[name]["best_reward"]))
         best_iters.append(results[name]["best_iter"])
-        print(name)
-        print([None]+results[name]["best_path"][best_path_index][:-1])
-        draw_tree(results[name]["root"][best_path_index], tsp_env, filename=f"tree_{name}", max_depth=len(cities), best_path=best_path)
+        draw_tree(results[name]["root"][best_path_index], tsp_env, filename=f"tree_{name}", max_depth=len(cities), best_path=best_path, is_print_action=False)
 
     box_plot(
         means, errors,

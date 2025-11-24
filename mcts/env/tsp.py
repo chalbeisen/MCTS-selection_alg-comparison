@@ -1,11 +1,3 @@
-"""A simple sequential Traveling Salesman environment.
-
-State: current city and set of visited cities.
-Each action chooses the next city to visit (integer index).
-All cities must be visited exactly once.
-Reward is returned only at terminal state (after returning to start).
-"""
-
 from typing import List, Tuple
 import math
 import copy
@@ -26,11 +18,14 @@ class TSPEnv(Env):
     def is_turn_based(self):
         return False 
     
-    def get_legal_actions(self, state: List[int]):
-        if not state: 
+    def reset_state(self):
+        self.visited = []
+        
+    def get_legal_actions(self):
+        if self.visited == []: 
             untried_actions = list(self.legal_actions)
         else:
-            untried_actions = [a for a in self.legal_actions if a not in state]
+            untried_actions = [a for a in self.legal_actions if a not in self.visited]
         return untried_actions
     
     def get_action(self, i) -> Tuple[int,int]:

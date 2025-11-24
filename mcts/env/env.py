@@ -22,6 +22,9 @@ class Env:
     def is_turn_based(self) -> bool:
         raise NotImplementedError("this method should be implemented by subclass")
 
+    def reset_state(self) -> bool:
+        raise NotImplementedError("this method should be implemented by subclass")
+    
     def get_legal_actions(self, state):
         raise NotImplementedError("this method should be implemented by subclass")
 

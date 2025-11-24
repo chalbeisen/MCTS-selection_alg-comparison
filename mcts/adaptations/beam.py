@@ -34,7 +34,7 @@ def beam_mcts_search(root_env: Env, iterations: int = 1000, beam_width: int = 20
         random.seed(seed)
         np.random.seed(seed)
 
-    root = BeamNode(parent=None, action=None, untried_actions=root_env.get_legal_actions(None))
+    root = BeamNode(parent=None, action=None, untried_actions=root_env.get_legal_actions())
     depth_counter: Dict[int, int] = {}
     best_path: list[int] = []
     best_reward = -np.inf

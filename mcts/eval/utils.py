@@ -5,10 +5,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from graphviz import Digraph
-from env.env import SimpleEnv
+from env.env import Env
 from typing import List, Tuple
 
-def draw_tree(root: node._Node, env: SimpleEnv, filename="tree", max_depth: int = 3, best_path: List[Tuple[int, int]] = None):
+def draw_tree(root: node._Node, env: Env, filename="tree", max_depth: int = 3, best_path: List[Tuple[int, int]] = None, is_print_action: bool = True):
     """
     Draw a UCT tree up to a maximum depth.
     
@@ -18,12 +18,16 @@ def draw_tree(root: node._Node, env: SimpleEnv, filename="tree", max_depth: int 
     """
     dot = Digraph(comment='Tree')
     
-    def add_node(node: node._Node, parent_id: str = None, depth: int = 0., patterns = None, best_path = None):
+    def add_node(node: node._Node, parent_id: str = None, depth: int = 0., patterns = None, best_path = None, is_print_action: bool = True):
         if depth > max_depth:
             return
         node_id = str(id(node))
-        action = env.get_action(node.action) if node.action is not None else None
+        if is_print_action:
+            action = env.get_action(node.action) if node.action is not None else None
+        else:
+            action = node.action
         label = f"Action: {action}\nVisits: {node.visits}\nValue: {node.edge_reward:.2f}"
+        
         is_along_best_path = best_path is not None and action == best_path[0]
         color = "red" if is_along_best_path else "black"
         dot.node(node_id, label, style="filled", penwidth="2", color = color, fillcolor="white")
@@ -33,10 +37,9 @@ def draw_tree(root: node._Node, env: SimpleEnv, filename="tree", max_depth: int 
             next_path = best_path[1:] if is_along_best_path else None
             add_node(child, node_id, depth + 1, best_path=next_path)
     
-    add_node(root, best_path=best_path)
+    add_node(root, best_path=best_path, is_print_action=is_print_action)
     dot.render(filename, format="png", cleanup=True)
     print(f"Tree saved as {filename}.png")
-
 
 def box_plot(data, yerrors, ylabel, labels, colors, edgecolor, figsize = (8,6), save_path = None, patterns = None):
     plt.figure(figsize=figsize)

@@ -33,7 +33,7 @@ class MMCTS_Node(_Node):
         return
 
 def mmcts_search(root_env: Env, iterations: int = 1000, uct_inf_softening: float = 2, base_temp: float = 1000, decay: float = 0.05, p_max: float = 1.5, seed: Optional[int] = None) -> int:
-    root = MMCTS_Node(parent=None, action=None, untried_actions=root_env.get_legal_actions(None))
+    root = MMCTS_Node(parent=None, action=None, untried_actions=root_env.get_legal_actions())
     best_path = []
     best_iteration = 0
     path_over_iter = []
@@ -109,6 +109,7 @@ def _exp_ratio(state_reward: float, proposal_reward: float, temperature: float =
 
 def go_to_state(state: List[int], root: "_Node", env: Env):
     node = root
+    env.reset_state()
     for action in state:
         if action not in [n.action for n in node.children]:
             node = node._create_new_child(action, env)

@@ -143,7 +143,7 @@ def dents_search(root_env: Env,
     if seed is not None:
         np.random.seed(seed)
 
-    root = Dents_Node(parent=None, action=None, untried_actions=root_env.get_legal_actions(None))
+    root = Dents_Node(parent=None, action=None, untried_actions=root_env.get_legal_actions())
     max_reward = -np.inf
     best_path = []
     best_iter = 0

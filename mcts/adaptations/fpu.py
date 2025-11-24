@@ -67,7 +67,7 @@ def uct_search_fpu(
         random.seed(seed)
         np.random.seed(seed)
 
-    root = UCTNodeFPU(parent=None, action=None, untried_actions=root_env.get_legal_actions(None), fpu=fpu)
+    root = UCTNodeFPU(parent=None, action=None, untried_actions=root_env.get_legal_actions(), fpu=fpu)
 
     max_reward = -np.inf
     best_path = []
