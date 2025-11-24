@@ -1,16 +1,9 @@
-"""A simple MENTS-like MCTS: uses Boltzmann (softmax) selection over child
-average-values with a decaying temperature.
-
-This is a minimal, illustrative implementation to act as a starting point for
-porting the C++ `ments` algorithm.
-"""
-
 import math
 import random
 import numpy as np
 from typing import List, Optional
 
-from env.env import SimpleEnv
+from env.env import Env
 from mcts.node import _Node
 
 def f_tau(r, tau):
@@ -52,7 +45,7 @@ class Ments_Node(_Node):
         mixed_policy = (1 - lamb) * soft_probs + lamb * uniform
         return mixed_policy, actions
     
-    def _create_new_child(self, action: int, env: SimpleEnv) -> "_Node":
+    def _create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
         child = Ments_Node(parent=self, action=action, untried_actions=untried_actions)
         self.children.append(child)
@@ -63,7 +56,7 @@ class Ments_Node(_Node):
         probs, actions = self._softmax_policy(temp, epsilon)
         return int(np.random.choice(actions, p=probs))
 
-    def _select_child(self, env: SimpleEnv, temp:float, epsilon: float) -> tuple["_Node", float]:
+    def _select_child(self, env: Env, temp:float, epsilon: float) -> tuple["_Node", float]:
         action = self._select_action(temp, epsilon)
         reward = env.step(action)
         selected_child = self._get_node_by_action(action)
@@ -120,11 +113,12 @@ class Ments_Node(_Node):
 
                 
 
-def ments_search(root_env: SimpleEnv, iterations: int = 1000, base_temp: float = 1000, decay: float = 0.05, epsilon: float = 1.0, seed: Optional[int] = None) -> int:
-    root = Ments_Node(parent=None, action=None, untried_actions=list(root_env.legal_actions))
+def ments_search(root_env: Env, iterations: int = 1000, base_temp: float = 1000, decay: float = 0.05, epsilon: float = 1.0, seed: Optional[int] = None) -> int:
+    root = Ments_Node(parent=None, action=None, untried_actions=root_env.get_legal_actions(None))
     max_reward = -np.inf
     best_path = []
     best_iteration = 0
+    path_over_iter = []
 
     for i in range(iterations):
         node = root
@@ -144,5 +138,6 @@ def ments_search(root_env: SimpleEnv, iterations: int = 1000, base_temp: float =
             max_reward = reward
             best_path = path.copy()
             best_iteration = i
+        path_over_iter.append(env.get_items_in_path(best_path))
 
-    return root, env.get_items_in_path(best_path), abs(max_reward), best_iteration
+    return root, env.get_items_in_path(best_path), abs(max_reward), best_iteration, path_over_iter

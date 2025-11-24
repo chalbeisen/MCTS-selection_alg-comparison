@@ -1,6 +1,6 @@
 import numpy as np
 from typing import List, Optional
-from env.env import SimpleEnv
+from env.env import Env
 from mcts.node import _Node
 
 def entropy(probs: List[float]) -> float:
@@ -51,7 +51,7 @@ class Dents_Node(_Node):
         mixed_policy = (1 - lamb) * probs + lamb * uniform
         return mixed_policy, actions
 
-    def _create_new_child(self, action: int, env: SimpleEnv) -> "_Node":
+    def _create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
         child = Dents_Node(parent=self, action=action, untried_actions=untried_actions)
         self.children.append(child)
@@ -62,7 +62,7 @@ class Dents_Node(_Node):
         probs, actions = self._boltzmann_policy(temp, epsilon)
         return int(np.random.choice(actions, p=probs))
 
-    def _select_child(self, env: SimpleEnv, temp: float, epsilon: float) -> tuple["_Node", float]:
+    def _select_child(self, env: Env, temp: float, epsilon: float) -> tuple["_Node", float]:
         action = self._select_action(temp, epsilon)
         reward = env.step(action)
         selected_child = self._get_node_by_action(action)
@@ -72,7 +72,6 @@ class Dents_Node(_Node):
         return selected_child, reward
 
     def _backpropagate(self, temp: float, reward: float, node: "_Node", epsilon: float):
-        """Propagate reward and entropy information up the tree."""
         node.V_hat = reward
         cur = node
         while cur is not None:
@@ -100,7 +99,6 @@ class Dents_Node(_Node):
             cur = cur.parent
         
     def _backpropagate_stochastic(self, temp: float, reward: float, node: "_Node", epsilon: float):
-        """Propagate reward and entropy information up the tree (stochastic version)."""
         node.V_hat = reward
         cur = node
         while cur is not None:
@@ -136,7 +134,7 @@ class Dents_Node(_Node):
             cur = cur.parent
 
 
-def dents_search(root_env: SimpleEnv,
+def dents_search(root_env: Env,
                  iterations: int = 1000,
                  base_temp: float = 10.0,
                  decay: float = 0.001,
@@ -145,10 +143,11 @@ def dents_search(root_env: SimpleEnv,
     if seed is not None:
         np.random.seed(seed)
 
-    root = Dents_Node(parent=None, action=None, untried_actions=list(root_env.legal_actions))
+    root = Dents_Node(parent=None, action=None, untried_actions=root_env.get_legal_actions(None))
     max_reward = -np.inf
     best_path = []
     best_iter = 0
+    path_over_iter = []
 
     for i in range(iterations):
         node = root
@@ -167,4 +166,6 @@ def dents_search(root_env: SimpleEnv,
             best_path = path.copy()
             best_iter = i
 
-    return root, env.get_items_in_path(best_path), abs(max_reward), best_iter
+        path_over_iter.append(env.get_items_in_path(best_path))
+
+    return root, env.get_items_in_path(best_path), abs(max_reward), best_iter, path_over_iter

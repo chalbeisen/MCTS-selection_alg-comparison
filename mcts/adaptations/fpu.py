@@ -9,7 +9,7 @@ import random
 import numpy as np
 from typing import List, Optional
 
-from env.env import SimpleEnv
+from env.env import Env
 from mcts.node import _Node
 
 
@@ -25,7 +25,6 @@ class UCTNodeFPU(_Node):
         self.fpu = fpu  # First-play urgency
 
     def uct_score(self, explore_const: float = math.sqrt(2.0)) -> float:
-        """UCT score modified to use FPU for unexplored nodes."""
         if self.visits == 0:
             return self.fpu  # Use FPU instead of infinity
         parent_visits = self.parent.visits if self.parent else 1
@@ -34,12 +33,12 @@ class UCTNodeFPU(_Node):
     def _best_child(self, explore_const: float = math.sqrt(2.0)) -> "_Node":
         return max(self.children, key=lambda c: c.uct_score(explore_const))
 
-    def _select_best_child(self, env: SimpleEnv) -> tuple["_Node", float]:
+    def _select_best_child(self, env: Env) -> tuple["_Node", float]:
         child = self._best_child()
         reward = env.step(child.action)
         return child, reward
 
-    def _create_new_child(self, action: int, env: SimpleEnv) -> "_Node":
+    def _create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
         child = UCTNodeFPU(self, action, untried_actions, fpu=self.fpu)
         self.children.append(child)
@@ -59,7 +58,7 @@ class UCTNodeFPU(_Node):
 
 
 def uct_search_fpu(
-    root_env: SimpleEnv,
+    root_env: Env,
     iterations: int = 1000,
     fpu: float = 0.5,
     seed: Optional[int] = None,
@@ -68,11 +67,12 @@ def uct_search_fpu(
         random.seed(seed)
         np.random.seed(seed)
 
-    root = UCTNodeFPU(parent=None, action=None, untried_actions=list(root_env.legal_actions), fpu=fpu)
+    root = UCTNodeFPU(parent=None, action=None, untried_actions=root_env.get_legal_actions(None), fpu=fpu)
 
     max_reward = -np.inf
     best_path = []
     best_iteration = 0
+    path_over_iter = []
 
     for i in range(iterations):
         node = root
@@ -92,5 +92,6 @@ def uct_search_fpu(
             max_reward = reward
             best_path = path.copy()
             best_iteration = i
+        path_over_iter.append(env.get_items_in_path(best_path))
 
-    return root, env.get_items_in_path(best_path), abs(max_reward), best_iteration
+    return root, env.get_items_in_path(best_path), abs(max_reward), best_iteration, path_over_iter

@@ -3,12 +3,11 @@ import numpy as np
 import random
 from typing import List, Optional, Dict
 
-from env.env import SimpleEnv   # or your TSPEnv
+from env.env import Env   # or your TSPEnv
 from mcts.node import _Node
 
 
 class BeamNode(_Node):
-    """BMCTS node identical to _Node but tracks depth."""
     def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int]):
         super().__init__(parent, action, untried_actions)
         self.depth = 0 if parent is None else parent.depth + 1
@@ -17,12 +16,12 @@ class BeamNode(_Node):
         child = max(self.children, key=lambda c: c.uct_score())
         return child
 
-    def _select_best_child(self, env: SimpleEnv) -> tuple["_Node", float]:
+    def _select_best_child(self, env: Env) -> tuple["_Node", float]:
         child = self._best_child()
         reward = env.step(child.action)
         return child, reward
     
-    def _create_new_child(self, action: int, env: SimpleEnv) -> "_Node":
+    def _create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
         child = BeamNode(parent=self, action=action, untried_actions=untried_actions)
         self.children.append(child)
@@ -30,16 +29,17 @@ class BeamNode(_Node):
         return child
 
 
-def beam_mcts_search(root_env: SimpleEnv, iterations: int = 1000, beam_width: int = 20, sim_limit: int = 100, seed: Optional[int] = None) -> tuple[list[int], float, int]:
+def beam_mcts_search(root_env: Env, iterations: int = 1000, beam_width: int = 20, sim_limit: int = 100, seed: Optional[int] = None) -> tuple[list[int], float, int]:
     if seed is not None:
         random.seed(seed)
         np.random.seed(seed)
 
-    root = BeamNode(parent=None, action=None, untried_actions=list(root_env.legal_actions))
+    root = BeamNode(parent=None, action=None, untried_actions=root_env.get_legal_actions(None))
     depth_counter: Dict[int, int] = {}
     best_path: list[int] = []
     best_reward = -np.inf
     best_iteration = 0
+    path_over_iter = []
 
     for i in range(iterations):
         node = root
@@ -76,8 +76,9 @@ def beam_mcts_search(root_env: SimpleEnv, iterations: int = 1000, beam_width: in
             best_reward = reward
             best_path = path.copy()
             best_iteration = i
+        path_over_iter.append(env.get_items_in_path(best_path))
 
-    return root, env.get_items_in_path(best_path), abs(best_reward), best_iteration
+    return root, env.get_items_in_path(best_path), abs(best_reward), best_iteration, path_over_iter
 
 
 def prune_tree(root: BeamNode, depth: int, beam_width: int):

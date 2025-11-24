@@ -1,9 +1,3 @@
-"""A simple UCT implementation used as the first algorithm port.
-
-This is a minimal, well-commented implementation intended as a starting
-point to port other algorithms from the C++ codebase.
-"""
-
 import math
 import random
 import torch
@@ -12,7 +6,7 @@ from typing import List, Optional
 from adaptations.sampling import uct_distribution, cap_distribution
 from mcts.node import _Node
 
-from env.env import SimpleEnv
+from env.env import Env
 from copy import copy
 
 
@@ -20,7 +14,7 @@ class MMCTS_Node(_Node):
     def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int]):
         super().__init__(parent, action, untried_actions)
 
-    def _create_new_child(self, action: int, env: SimpleEnv) -> "_Node":
+    def _create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
         child = MMCTS_Node(parent=self, action=action, untried_actions=untried_actions)
         self.children.append(child)
@@ -38,10 +32,11 @@ class MMCTS_Node(_Node):
             self.parent._backpropagate(reward)
         return
 
-def mmcts_search(root_env: SimpleEnv, iterations: int = 1000, uct_inf_softening: float = 2, base_temp: float = 1000, decay: float = 0.05, p_max: float = 1.5, seed: Optional[int] = None) -> int:
-    root = MMCTS_Node(parent=None, action=None, untried_actions=list(root_env.legal_actions))
+def mmcts_search(root_env: Env, iterations: int = 1000, uct_inf_softening: float = 2, base_temp: float = 1000, decay: float = 0.05, p_max: float = 1.5, seed: Optional[int] = None) -> int:
+    root = MMCTS_Node(parent=None, action=None, untried_actions=root_env.get_legal_actions(None))
     best_path = []
     best_iteration = 0
+    path_over_iter = []
 
     node = root
     env = root_env.clone()
@@ -52,6 +47,7 @@ def mmcts_search(root_env: SimpleEnv, iterations: int = 1000, uct_inf_softening:
     max_reward = state_reward
     best_path = original_path
     node._backpropagate(state_reward)
+    path_over_iter.append(env.get_items_in_path(best_path))
     
     for i in range(iterations):
         node = root
@@ -86,15 +82,17 @@ def mmcts_search(root_env: SimpleEnv, iterations: int = 1000, uct_inf_softening:
                 best_path = proposed_path
                 best_iteration = i
 
-    return root, env.get_items_in_path(best_path), abs(max_reward), best_iteration
+        path_over_iter.append(env.get_items_in_path(best_path))
 
-def mutate(original_path: List[int], mutate_index: int, mutate_value: float, env: SimpleEnv):
+    return root, env.get_items_in_path(best_path), abs(max_reward), best_iteration, path_over_iter
+
+def mutate(original_path: List[int], mutate_index: int, mutate_value: float, env: Env):
     path = copy(original_path)
     path[mutate_index] = mutate_value
     reward = env.update(path)
     return path, reward
 
-def swap(original_path: List[int], new_index: int, new_value: float, env: SimpleEnv):
+def swap(original_path: List[int], new_index: int, new_value: float, env: Env):
     path = copy(original_path)
     if len(original_path) > 1: 
         old_index = next(i for i in range(len(original_path)) if original_path[i] == new_value)
@@ -109,7 +107,7 @@ def _exp_ratio(state_reward: float, proposal_reward: float, temperature: float =
     exponent = max(min(exponent, 700), -700)  # clamp to safe range for exp
     return math.exp(exponent)
 
-def go_to_state(state: List[int], root: "_Node", env: SimpleEnv):
+def go_to_state(state: List[int], root: "_Node", env: Env):
     node = root
     for action in state:
         if action not in [n.action for n in node.children]:
