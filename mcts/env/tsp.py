@@ -14,13 +14,10 @@ class TSPEnv(Env):
         self.legal_actions = [i for i in range(len(cities))]
         self.seed = seed
         np.random.seed(seed)
-
-    def is_turn_based(self):
-        return False 
     
     def reset_state(self):
         self.visited = []
-        
+
     def get_legal_actions(self):
         if self.visited == []: 
             untried_actions = list(self.legal_actions)
@@ -30,6 +27,9 @@ class TSPEnv(Env):
     
     def get_action(self, i) -> Tuple[int,int]:
         return self.cities[i]
+    
+    def get_state(self) -> Tuple[int,int]:
+        return self.visited
     
     def get_items_in_path(self, path: List[int]) -> List[Tuple[float,float]]:
         return [self.cities[i] for i in path] + [self.cities[path[0]]]

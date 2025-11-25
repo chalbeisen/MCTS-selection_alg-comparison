@@ -15,14 +15,13 @@ from typing import List, Tuple
 
 
 class Env:
-
     def clone(self) -> "Env":
         return copy.deepcopy(self)
     
     def is_turn_based(self) -> bool:
-        raise NotImplementedError("this method should be implemented by subclass")
+        return True
 
-    def reset_state(self) -> bool:
+    def reset_state(self):
         raise NotImplementedError("this method should be implemented by subclass")
     
     def get_legal_actions(self, state):
@@ -41,4 +40,12 @@ class Env:
         raise NotImplementedError("this method should be implemented by subclass")
 
     def is_terminal(self) -> bool:
+        raise NotImplementedError("this method should be implemented by subclass")
+    
+class Env_TurnBased(Env):
+    
+    def is_turn_based(self) -> bool:
+        return False
+    
+    def get_current_player(self):
         raise NotImplementedError("this method should be implemented by subclass")
