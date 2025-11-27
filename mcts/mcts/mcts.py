@@ -62,7 +62,7 @@ class UCT_Node_TurnBased(UCT_Node, _NodeTurnBased):
         else:
             player = 1 - self.player
         state = self.state + [action] if self.state else [action]
-        child = UCT_Node_TurnBased(parent=self, action=action, untried_actions=untried_actions, state = state, player=player)
+        child = UCT_Node_TurnBased(parent=self, action=action, untried_actions=untried_actions, state = env.get_state(), player=player)
         self.children.append(child)
 
         return child
