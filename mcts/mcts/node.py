@@ -57,6 +57,9 @@ class _NodeTurnBased(_Node):
 
     def _determine_reward(self, reward: float, env: Env):
         reward = reward[self.player]
+        # for root node child don`t change reward value
+        if self.parent.action is None:
+            return reward
         if reward == 0:
             return reward
         return -reward
