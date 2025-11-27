@@ -21,7 +21,10 @@ class Env:
     def is_turn_based(self) -> bool:
         return True
 
-    def reset_state(self):
+    def set_initial_state(self, initial_state: List[int]):
+        self.initial_state = initial_state
+
+    def reset_to_initial_state(self):
         raise NotImplementedError("this method should be implemented by subclass")
     
     def get_legal_actions(self, state):
@@ -43,7 +46,6 @@ class Env:
         raise NotImplementedError("this method should be implemented by subclass")
     
 class Env_TurnBased(Env):
-    
     def is_turn_based(self) -> bool:
         return False
     

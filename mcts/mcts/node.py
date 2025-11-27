@@ -5,7 +5,7 @@ import math
 import random
 
 class _Node:
-    def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int], player = 0):
+    def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int], state: List[int]):
         self.parent = parent
         self.action = action
         self.children: List[_Node] = []
@@ -13,6 +13,7 @@ class _Node:
         self.visits = 0
         self.value = 0
         self.edge_reward = 0
+        self.state = state
 
     def uct_score(self, explore_const: float = math.sqrt(2)) -> float:
         if self.visits == 0:
@@ -31,7 +32,7 @@ class _Node:
         child = self._create_new_child(action, env)
         return child, reward            
     
-    def _expand_ramdom(self, env: Env) -> tuple["_Node", float]:
+    def _expand_random(self, env: Env) -> tuple["_Node", float]:
         action = random.choice(self.untried_actions)
         reward = env.step(action)
         child = self._create_new_child(action, env)
@@ -47,9 +48,9 @@ class _Node:
         return None
     
 class _NodeTurnBased(_Node):
-    def __init__(self, parent: Optional["_NodeTurnBased"], action: Optional[int], untried_actions: List[int], player = 0):
-        super().__init__(parent, action, untried_actions)
-        self.player = None
+    def __init__(self, parent: Optional["_NodeTurnBased"], action: Optional[int], untried_actions: List[int], state: List[int], player: int = None):
+        super().__init__(parent, action, untried_actions, state)
+        self.player = player
 
     def get_player():
         raise NotImplementedError("this method should be implemented by subclass")

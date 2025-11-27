@@ -9,10 +9,16 @@ import pyspiel
 
 class TicTacToeEnv(Env_TurnBased):
     def __init__(self):
+        self.initial_state = []
         self.game = pyspiel.load_game(f"tic_tac_toe")
+    
+    def set_initial_state(self, initial_state: List[int]):
+        self.initial_state = initial_state
 
-    def set_initial_state(self):
+    def reset_to_initial_state(self):
         self.state = self.game.new_initial_state()
+        for action in self.initial_state:
+            self.step(action)
         self.legal_actions = self.state.legal_actions()
 
     def is_turn_based(self):
@@ -42,14 +48,17 @@ class TicTacToeEnv(Env_TurnBased):
     def get_items_in_path(self, path: List[int]) -> List[Tuple[float,float]]:
         return path
 
-    def step(self, action: int) -> float:
+    def step(self, action: int) -> List[float]:
         self.state.apply_action(action)
         if self.is_terminal():
             return self.state.returns()
-        return 0.0
+        return [0.0, 0.0]
 
     def is_terminal(self) -> bool:
         return self.state.is_terminal()
     
-    def update(self, new_path: List[int]):
-        raise NotImplementedError("this method should be implemented by sublcasse")
+    def update(self, new_path: List[int], initial_state: List[int] = []):
+        self.reset_to_initial_state()
+        for action in new_path:
+            reward = self.step(action)
+        return reward

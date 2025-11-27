@@ -12,8 +12,8 @@ from mcts.node import _Node, _NodeTurnBased
 
 
 class UCT_Node(_Node):
-    def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int]):
-        super().__init__(parent, action, untried_actions)
+    def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int], state: List[int]):
+        super().__init__(parent, action, untried_actions, state)
 
     def _best_child_uct(self) -> "_Node":
         child = max(self.children, key=lambda c: c.uct_score())
@@ -30,9 +30,9 @@ class UCT_Node(_Node):
 
     def _create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
-        child = UCT_Node(parent=self, action=action, untried_actions=untried_actions)
+        state = self.state + [action] if self.state else [action]
+        child = UCT_Node(parent=self, action=action, untried_actions=untried_actions, state = state)
         self.children.append(child)
-        child.state = env.get_state()
         return child
     
     def _backpropagate(self, reward: float, env: Env) -> None:
@@ -47,8 +47,8 @@ class UCT_Node(_Node):
         return
 
 class UCT_Node_TurnBased(UCT_Node, _NodeTurnBased):
-    def __init__(self, parent, action, untried_actions, player=None):
-        super().__init__(parent, action, untried_actions)
+    def __init__(self, parent, action, untried_actions, state: List[int], player=None):
+        super().__init__(parent, action, untried_actions, state)
         self.player = player
 
     def get_player(self):
@@ -61,9 +61,9 @@ class UCT_Node_TurnBased(UCT_Node, _NodeTurnBased):
             player = 1 - env.get_current_player()
         else:
             player = 1 - self.player
-        child = UCT_Node_TurnBased(parent=self, action=action, untried_actions=untried_actions, player=player)
+        state = self.state + [action] if self.state else [action]
+        child = UCT_Node_TurnBased(parent=self, action=action, untried_actions=untried_actions, state = state, player=player)
         self.children.append(child)
-        child.state = env.get_state()
 
         return child
 
@@ -125,7 +125,7 @@ class MCTS_Search():
         else:
             player = self.root_env.get_current_player()
 
-        root = UCT_Node_TurnBased(parent=None, action=None, untried_actions=self.root_env.get_legal_actions(), player = player)
+        root = UCT_Node_TurnBased(parent=None, action=None, untried_actions=self.root_env.get_legal_actions(), state = [], player = player)
 
         for i in range(iterations):
             node = root
@@ -137,7 +137,7 @@ class MCTS_Search():
                     node, reward = node._select_best_child(env)
                 else:
                     # Expansion
-                    node, reward = node._expand_ramdom(env)
+                    node, reward = node._expand_random(env)
                 path.append(node.action)
 
             # Backpropagation
