@@ -21,6 +21,7 @@ class _Node:
         parent_visits = self.parent.visits if self.parent else 1
         return (self.value / self.visits) + explore_const * math.sqrt(math.log(parent_visits) / self.visits)
 
+    
     def update_untried_actions(self, action: int, env: Env) -> List[int]:
         untried_actions = env.get_legal_actions()
         self.untried_actions.remove(action)

@@ -54,6 +54,7 @@ class UCT_Node_TurnBased(UCT_Node, _NodeTurnBased):
     def get_player(self):
         return self.player 
     
+    
     def _create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
         next_player = env.get_current_player()
@@ -67,6 +68,7 @@ class UCT_Node_TurnBased(UCT_Node, _NodeTurnBased):
 
         return child
 
+    
     def _backpropagate(self, reward: float, env: Env):
         self.visits += 1
 

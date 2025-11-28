@@ -1,4 +1,5 @@
-import mcts.mcts as mcts
+from mcts.mcts import MCTS_Search
+from adaptations.mmcts import MMCTS_Search
 import adaptations.ments as ments
 from env.go import GoEnv
 import adaptations.mmcts as mmcts
@@ -7,6 +8,7 @@ import adaptations.beam as beam
 import adaptations.fpu as fpu
 
 import random
+import torch
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -17,6 +19,8 @@ colors_hist_plot = [ "#FFFFFF00", "#09a93e3e", "#09a93e8c", "#09a93ea7", "#09a93
 edgecolor = ["#3838ff", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF", "#FFFFFF"]
 patterns = [ "", "/" , "\\" , "-" , "x" , "" ]
 output_dir = "results/plots"
+seed = 1
+
 
 if __name__ == "__main__":
     N = 5
@@ -27,49 +31,38 @@ if __name__ == "__main__":
     decay = 0.0
     epsilon = 2.0
 
-    search_algorithms = {
-        "MCTS": (mcts.uct_search, {}),}
-    """ 
-        "MENTS": (ments.ments_search, {'base_temp': 0.1, 'decay': 0.0001, 'epsilon': 0.1}),
-        "DENTS": (dents.dents_search, {'base_temp': 0.1, 'decay': 0.0001, 'epsilon': 0.1}),
-        "FPU": (fpu.uct_search_fpu, {'fpu': 0.1}),
-        "BEAM": (beam.beam_mcts_search, {'beam_width': 30, 'sim_limit': 50}),
-        "MMCTS": (mmcts.mmcts_search, {'base_temp': 1.0, 'decay': 0.0001, 'uct_inf_softening': 5, 'p_max': 1.5}),
-        
-    }"""
-    labels = search_algorithms.keys()
-    results = {name: {"best_path": [], "best_reward": [], "best_iter": []} for name in search_algorithms}
-    means = []
+    env = GoEnv()
+    search_algorithms = [
+        {"alg_name": "MCTS", "params": {}, "search_fn": MCTS_Search(env).uct_search_turn_based},
+        {"alg_name": "MMCTS", "params": {}, "search_fn": MMCTS_Search(env).mmcts_search_turn_based}
+    ]
+
+    labels = [d["alg_name"] for d in search_algorithms]
+    results = [{"wins": 0} for i in range(len(search_algorithms))]
+    means = [] 
     errors = []
     best_rewards = []
     best_iters = []
+    current_player = 0
     for i in range(nr_of_runs):
-        env = GoEnv(N)
-
-        for name, (search_fn, params) in search_algorithms.items():
-            root, best_path, best_reward, best_iter = search_fn(
-                env, iterations=iterations, seed=i, **params
+        random.seed(i)
+        torch.manual_seed(i)
+        np.random.seed(i)
+        # switch up first player:
+        # search_algorithms[0], search_algorithms[1] = search_algorithms[1], search_algorithms[0]
+        env.set_initial_state([])
+        env.reset_to_initial_state()
+        while not env.is_terminal():
+            current_player = env.get_current_player()
+            action = search_algorithms[current_player]["search_fn"](
+                iterations=iterations, **search_algorithms[current_player]["params"]
             )
+            print(env.state)
+        print(env.get_state())
+        
+        winner = env.get_winner()
+        print(winner)
+        if winner >= 0:
+            results[winner]["wins"]+=1
 
-            # Append results
-            results[name]["best_path"].append(best_path)
-            results[name]["best_reward"].append(best_reward)
-            results[name]["best_iter"].append(best_iter/iterations * 100)
-
-            #draw_tree(root, filename=f"tree_{name}_run{i}", max_depth=len(cities))
-
-    for name, (search_fn, params) in search_algorithms.items():
-        means.append(np.mean(results[name]["best_reward"]))
-        errors.append(np.std(results[name]["best_reward"]))
-        best_iters.append(results[name]["best_iter"])
-
-    box_plot(
-        means, errors,
-        ylabel='Mean Max Reward', labels=labels, colors=colors_box_plot,
-        save_path=f"{output_dir}/mean_best_reward_go.png", patterns = patterns, edgecolor = edgecolor
-    )
-    hist_plot(
-        best_iters, colors_hist_plot, xlabel="Iterations", ylabel="Count",
-        labels=labels, save_path=f"{output_dir}/iterations_go.png", bins=10, patterns = patterns, edgecolor = edgecolor
-    )
-    print("test")
+    print(results)

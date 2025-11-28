@@ -8,9 +8,9 @@ import pyspiel
 #https://github.com/AlexMGitHub/Checkers-MCTS/tree/2e6bc7e9dfe1570fd2e1c17c230848daf01a4f37
 
 class GoEnv(Env_TurnBased):
-    def __init__(self):
+    def __init__(self, N: int = 5):
         self.initial_state = []
-        self.game = pyspiel.load_game(f"go(N=5)")
+        self.game = pyspiel.load_game(f"go(board_size={N})")
     
     def set_initial_state(self, initial_state: List[int]):
         self.initial_state = initial_state
