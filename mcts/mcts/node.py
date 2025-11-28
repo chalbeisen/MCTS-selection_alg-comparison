@@ -3,6 +3,7 @@ from typing import List, Optional
 from env.env import Env
 import math
 import random
+import torch
 
 class _Node:
     def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int], state: List[int]):
@@ -21,11 +22,17 @@ class _Node:
         parent_visits = self.parent.visits if self.parent else 1
         return (self.value / self.visits) + explore_const * math.sqrt(math.log(parent_visits) / self.visits)
 
-    
+    """
     def update_untried_actions(self, action: int, env: Env) -> List[int]:
         untried_actions = env.get_legal_actions()
         self.untried_actions.remove(action)
+        return untried_actions"""
+    
+    def update_untried_actions(self, action: int, env: Env) -> List[int]:
+        untried_actions = [a for a in env.get_legal_actions() if a not in self.state and a!=action]
+        self.untried_actions.remove(action)
         return untried_actions
+    
     
     def _expand(self, env: Env) -> tuple["_Node", float]:
         action = self.untried_actions[0]

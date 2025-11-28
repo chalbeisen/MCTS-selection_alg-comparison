@@ -1,11 +1,9 @@
 from mcts.mcts import MCTS_Search
-from adaptations.mmcts import MMCTS_Search
-import adaptations.ments as ments
+
 from env.tic_tac_toe import TicTacToeEnv
-import adaptations.mmcts as mmcts
-import adaptations.dents as dents
-import adaptations.beam as beam
-import adaptations.fpu as fpu
+from mcts.mcts import MCTS_Search
+from adaptations.mmcts import MMCTS_Search
+
 
 import random
 import torch
@@ -32,12 +30,21 @@ if __name__ == "__main__":
     epsilon = 2.0
 
     env = TicTacToeEnv()
-    search_algorithms = [
-        {"alg_name": "MCTS", "params": {}, "search_fn": MCTS_Search(env).uct_search_turn_based},
-        {"alg_name": "MMCTS", "params": {}, "search_fn": MMCTS_Search(env).mmcts_search_turn_based}
-    ]
+    search_algorithms = {
+        "MCTS": {
+            "instance": MCTS_Search(env),                        
+            "search_fn": "mcts_search_turn_based",            
+            "params": {}                    
+        },
 
-    labels = [d["alg_name"] for d in search_algorithms]
+        "MMCTS": {
+            "instance": MMCTS_Search(env),
+            "search_fn": "mmcts_search_turn_based",
+            "params": {'base_temp': 1.0, 'decay': 0.0001, 'uct_inf_softening': 5, 'p_max': 1.5}
+        },
+    }
+
+    labels = list(search_algorithms.keys())
     results = [{"wins": 0} for i in range(len(search_algorithms))]
     means = [] 
     errors = []
@@ -50,13 +57,15 @@ if __name__ == "__main__":
         np.random.seed(i)
         # switch up first player:
         # search_algorithms[0], search_algorithms[1] = search_algorithms[1], search_algorithms[0]
-        env.set_initial_state([])
-        env.reset_to_initial_state()
+        env.reset_to_initial_state([])
         while not env.is_terminal():
             current_player = env.get_current_player()
-            action = search_algorithms[current_player]["search_fn"](
-                iterations=iterations, **search_algorithms[current_player]["params"]
-            )
+            # Get search_fn
+            current_player_alg = labels[current_player]
+            cfg = search_algorithms[current_player_alg]
+            search_fn = getattr(cfg["instance"], cfg["search_fn"]) 
+            # Run algorithm
+            action = search_fn(iterations=iterations, **cfg["params"])
         print(env.get_state())
         winner = env.get_winner()
         print(winner)

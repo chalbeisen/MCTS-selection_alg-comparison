@@ -19,9 +19,10 @@ class UCTNodeFPU(_Node):
         parent: Optional["_Node"],
         action: Optional[int],
         untried_actions: List[int],
+        state: List[int],
         fpu: float = 0.5,
     ):
-        super().__init__(parent, action, untried_actions)
+        super().__init__(parent, action, untried_actions, state)
         self.fpu = fpu  # First-play urgency
 
     def uct_score(self, explore_const: float = math.sqrt(2.0)) -> float:
@@ -40,7 +41,8 @@ class UCTNodeFPU(_Node):
 
     def _create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
-        child = UCTNodeFPU(self, action, untried_actions, fpu=self.fpu)
+        state = self.state + [action] if self.state else [action]
+        child = UCTNodeFPU(self, action, untried_actions, fpu=self.fpu, state = state)
         self.children.append(child)
         child.state = child.parent.state + [action] if child.parent else [action]
         return child
@@ -56,42 +58,37 @@ class UCTNodeFPU(_Node):
             self.parent._backpropagate(reward)
         return
 
+class FPU_Search:
+    def __init__(self, 
+                root_env: Env):
+        self.root_env = root_env
 
-def uct_search_fpu(
-    root_env: Env,
-    iterations: int = 1000,
-    fpu: float = 0.5,
-    seed: Optional[int] = None,
-):
-    if seed is not None:
-        random.seed(seed)
-        np.random.seed(seed)
+    def fpu_search(self, iterations: int, fpu: float = 0.5):
+        root = UCTNodeFPU(parent=None, action=None, untried_actions=list(self.root_env.get_legal_actions()), fpu=fpu, state = [])
 
-    root = UCTNodeFPU(parent=None, action=None, untried_actions=root_env.get_legal_actions(), fpu=fpu)
+        max_reward = -np.inf
+        best_path = []
+        best_iteration = 0
+        path_over_iter = []
 
-    max_reward = -np.inf
-    best_path = []
-    best_iteration = 0
-    path_over_iter = []
+        for i in range(iterations):
+            node = root
+            env = self.root_env.clone()
+            path = []
 
-    for i in range(iterations):
-        node = root
-        env = root_env.clone()
-        path = []
+            while not env.is_terminal():
+                if node.untried_actions == [] and node.children:
+                    node, reward = node._select_best_child(env)
+                else:
+                    node, reward = node._expand(env)
+                path.append(node.action)
 
-        while not env.is_terminal():
-            if node.untried_actions == [] and node.children:
-                node, reward = node._select_best_child(env)
-            else:
-                node, reward = node._expand(env)
-            path.append(node.action)
+            node._backpropagate(reward)
 
-        node._backpropagate(reward)
+            if reward > max_reward:
+                max_reward = reward
+                best_path = path.copy()
+                best_iteration = i
+            path_over_iter.append(env.get_items_in_path(best_path))
 
-        if reward > max_reward:
-            max_reward = reward
-            best_path = path.copy()
-            best_iteration = i
-        path_over_iter.append(env.get_items_in_path(best_path))
-
-    return root, env.get_items_in_path(best_path), abs(max_reward), best_iteration, path_over_iter
+        return root, env.get_items_in_path(best_path), abs(max_reward), best_iteration, path_over_iter

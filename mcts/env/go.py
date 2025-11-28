@@ -40,7 +40,7 @@ class GoEnv(Env_TurnBased):
         return self.state.current_player()
     
     def get_legal_actions(self):
-        return self.state.legal_actions()
+        return self.legal_actions
     
     def get_action(self, i):
         return i

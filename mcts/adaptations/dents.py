@@ -20,8 +20,8 @@ def f_tau(r, tau):
     return exp_r / (np.sum(exp_r) + 1e-8)
 
 class Dents_Node(_Node):
-    def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int]):
-        super().__init__(parent, action, untried_actions)
+    def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int], state: List[int]):
+        super().__init__(parent, action, untried_actions, state)
         self.Q_hat = {}
         self.HQ = {}
         self.HV = 0.0
@@ -53,7 +53,8 @@ class Dents_Node(_Node):
 
     def _create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
-        child = Dents_Node(parent=self, action=action, untried_actions=untried_actions)
+        state = self.state + [action] if self.state else [action]
+        child = Dents_Node(parent=self, action=action, untried_actions=untried_actions, state = state)
         self.children.append(child)
         child.state = self.state + [action] if self.state else [action]
         return child
@@ -133,39 +134,40 @@ class Dents_Node(_Node):
             # move up the tree
             cur = cur.parent
 
+class DENTS_Search:
+    def __init__(self, 
+                root_env: Env):
+        self.root_env = root_env
+        
+    def dents_search(self, 
+                     iterations: int,
+                     base_temp: float = 10.0,
+                     decay: float = 0.001,
+                     epsilon: float = 1.0):
 
-def dents_search(root_env: Env,
-                 iterations: int = 1000,
-                 base_temp: float = 10.0,
-                 decay: float = 0.001,
-                 epsilon: float = 1.0,
-                 seed: Optional[int] = None):
-    if seed is not None:
-        np.random.seed(seed)
+        root = Dents_Node(parent=None, action=None, untried_actions=list(self.root_env.get_legal_actions()), state = [])
+        max_reward = -np.inf
+        best_path = []
+        best_iter = 0
+        path_over_iter = []
 
-    root = Dents_Node(parent=None, action=None, untried_actions=root_env.get_legal_actions())
-    max_reward = -np.inf
-    best_path = []
-    best_iter = 0
-    path_over_iter = []
+        for i in range(iterations):
+            node = root
+            env = self.root_env.clone()
+            path = []
 
-    for i in range(iterations):
-        node = root
-        env = root_env.clone()
-        path = []
+            while not env.is_terminal():
+                tempscale = base_temp / (1.0 + decay * node.visits)
+                node, reward = node._select_child(env, tempscale, epsilon)
+                path.append(node.action)
 
-        while not env.is_terminal():
-            tempscale = base_temp / (1.0 + decay * node.visits)
-            node, reward = node._select_child(env, tempscale, epsilon)
-            path.append(node.action)
+            node._backpropagate(tempscale, reward, node, epsilon)
 
-        node._backpropagate(tempscale, reward, node, epsilon)
+            if reward > max_reward:
+                max_reward = reward
+                best_path = path.copy()
+                best_iter = i
 
-        if reward > max_reward:
-            max_reward = reward
-            best_path = path.copy()
-            best_iter = i
+            path_over_iter.append(env.get_items_in_path(best_path))
 
-        path_over_iter.append(env.get_items_in_path(best_path))
-
-    return root, env.get_items_in_path(best_path), abs(max_reward), best_iter, path_over_iter
+        return root, env.get_items_in_path(best_path), abs(max_reward), best_iter, path_over_iter

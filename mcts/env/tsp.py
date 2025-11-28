@@ -19,11 +19,12 @@ class TSPEnv(Env):
         self.visited = []
 
     def get_legal_actions(self):
-        if self.visited == []: 
+        return self.legal_actions
+        """if self.visited == []: 
             untried_actions = list(self.legal_actions)
         else:
             untried_actions = [a for a in self.legal_actions if a not in self.visited]
-        return untried_actions
+        return untried_actions"""
     
     def get_action(self, i) -> Tuple[int,int]:
         return self.cities[i]

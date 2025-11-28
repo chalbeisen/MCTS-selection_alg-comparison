@@ -22,8 +22,8 @@ def F_tau(r, tau) -> float:
     return float(r_max + tau * np.log(np.sum(np.exp((r - r_max) / (tau + 1e-8)))))
 
 class Ments_Node(_Node):
-    def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int]):
-        super().__init__(parent, action, untried_actions)
+    def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int], state: List[int]):
+        super().__init__(parent, action, untried_actions, state)
         self.Qsft = 0
     
     def _softmax_policy(self, temp: float, epsilon: float) -> tuple[List[float], List[int]]:
@@ -47,7 +47,8 @@ class Ments_Node(_Node):
     
     def _create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
-        child = Ments_Node(parent=self, action=action, untried_actions=untried_actions)
+        state = self.state + [action] if self.state else [action]
+        child = Ments_Node(parent=self, action=action, untried_actions=untried_actions, state = state)
         self.children.append(child)
         child.state = child.parent.state + [action] if child.parent else [action]
         return child
@@ -112,32 +113,41 @@ class Ments_Node(_Node):
             cur = cur.parent
 
                 
+class MENTS_Search:
+    def __init__(self, 
+                root_env: Env):
+        self.root_env = root_env
 
-def ments_search(root_env: Env, iterations: int = 1000, base_temp: float = 1000, decay: float = 0.05, epsilon: float = 1.0, seed: Optional[int] = None) -> int:
-    root = Ments_Node(parent=None, action=None, untried_actions=root_env.get_legal_actions())
-    max_reward = -np.inf
-    best_path = []
-    best_iteration = 0
-    path_over_iter = []
-
-    for i in range(iterations):
-        node = root
-        env = root_env.clone()
-        path = []
-
-        while not env.is_terminal():
-            # Selection
-            tempscale = base_temp / (1.0 + decay * node.visits)
-            node, reward = node._select_child(env, tempscale, epsilon)
-            path.append(node.action)
-
-        # Backpropagation
-        node._backpropagate_v2(reward, node)
+    def ments_search(self, 
+                     iterations: int,
+                     base_temp: float = 1000.,
+                     decay: float = 0.05,
+                     epsilon: float = 1.0) -> int:
         
-        if reward > max_reward:
-            max_reward = reward
-            best_path = path.copy()
-            best_iteration = i
-        path_over_iter.append(env.get_items_in_path(best_path))
+        root = Ments_Node(parent=None, action=None, untried_actions=list(self.root_env.get_legal_actions()), state = [])
+        max_reward = -np.inf
+        best_path = []
+        best_iteration = 0
+        path_over_iter = []
 
-    return root, env.get_items_in_path(best_path), abs(max_reward), best_iteration, path_over_iter
+        for i in range(iterations):
+            node = root
+            env = self.root_env.clone()
+            path = []
+
+            while not env.is_terminal():
+                # Selection
+                tempscale = base_temp / (1.0 + decay * node.visits)
+                node, reward = node._select_child(env, tempscale, epsilon)
+                path.append(node.action)
+
+            # Backpropagation
+            node._backpropagate_v2(reward, node)
+            
+            if reward > max_reward:
+                max_reward = reward
+                best_path = path.copy()
+                best_iteration = i
+            path_over_iter.append(env.get_items_in_path(best_path))
+
+        return root, env.get_items_in_path(best_path), abs(max_reward), best_iteration, path_over_iter
