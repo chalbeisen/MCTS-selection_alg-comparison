@@ -53,6 +53,10 @@ def cap_distribution(p: torch.Tensor, p_max: float, eps: float = 1e-12) -> torch
 
     return p_out
 
+def cap_distribution_wo_redistribution(p: torch.Tensor, p_max: float) -> torch.Tensor:
+    distribution = torch.minimum(p, torch.full_like(p, p_max))
+    distribution /= distribution.sum() 
+    return distribution
 
 # Example usage:
 if __name__ == "__main__":

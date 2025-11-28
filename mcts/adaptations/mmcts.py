@@ -3,7 +3,8 @@ import random
 import torch
 import numpy as np
 from typing import List, Optional
-from adaptations.sampling import uct_distribution, cap_distribution
+from adaptations.sampling import uct_distribution
+from adaptations.sampling.cap_distribution import cap_distribution, cap_distribution_wo_redistribution
 from mcts.node import _Node, _NodeTurnBased
 
 from env.env import Env
@@ -25,16 +26,26 @@ class MMCTS_Node(_Node):
         child = max(self.children, key=lambda c: c.visits)
         return child
     
+    
     def _best_action_capped_distr(self, uct_inf_softening, p_max) -> "_Node":
         legal_mutation_actions = self.untried_actions
         node_uct_values = torch.tensor([child.uct_score() for child in self.children] + [float("inf")] * len(legal_mutation_actions))
+        uct_values = compute_uct_scores(
+            values=[c.value for c in self.children],
+            visits=[c.visits for c in self.children],
+            parent_visits=max(self.visits, 1)
+        )
+
+        # Append +inf for untried actions
+        node_uct_values = torch.cat([uct_values, torch.full((len(legal_mutation_actions),), float("inf"), dtype=torch.float32)])
+
         candidates = [child.action for child in self.children] + legal_mutation_actions
         distribution = uct_distribution(node_uct_values, uct_inf_softening)
-        distribution = cap_distribution(distribution, (1+p_max)/len(candidates))
+        distribution = cap_distribution_wo_redistribution(distribution, (1+p_max)/len(candidates))
         candidate_index = torch.multinomial(distribution, 1).item()
         child_action = candidates[candidate_index]
         return child_action
-        
+    
     def _create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
         state = self.state + [action] if self.state else [action]
@@ -58,6 +69,7 @@ class MMCTS_Node_TurnBased(MMCTS_Node, _NodeTurnBased):
         super().__init__(parent, action, untried_actions, state)
         self.player = player
     
+    
     def _create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
         next_player = env.get_current_player()
@@ -71,6 +83,7 @@ class MMCTS_Node_TurnBased(MMCTS_Node, _NodeTurnBased):
 
         return child
 
+    
     def _backpropagate(self, reward: float, env: Env):
         self.visits += 1
 
@@ -138,6 +151,7 @@ def mmcts_search(root_env: Env, iterations: int = 1000, uct_inf_softening: float
     return root, env.get_items_in_path(best_path), abs(max_reward), best_iteration, path_over_iter
 
 
+
 def mutate(node, original_path: List[int],  mutate_index: int, mutate_value: float, env: Env):
     new_path = original_path[:mutate_index] + [mutate_value]
     reward = env.update(new_path)
@@ -159,6 +173,19 @@ def swap(original_path: List[int], new_index: int, new_value: float, env: Env):
     reward = env.update(path)
     return path, reward
 
+def compute_uct_scores(values: List[float], visits: List[int], parent_visits: int, explore_const: float = math.sqrt(2)) -> torch.Tensor:
+    values_tensor = torch.tensor(values, dtype=torch.float32)
+    visits_tensor = torch.tensor(visits, dtype=torch.float32)
+    
+    # Avoid division by zero
+    safe_visits = torch.clamp(visits_tensor, min=1.0)
+    uct_scores = (values_tensor / safe_visits) + explore_const * torch.sqrt(torch.log(torch.tensor(parent_visits, dtype=torch.float32)) / safe_visits)
+
+    uct_scores[visits_tensor == 0] = float("inf")
+
+    return uct_scores
+
+
 def _exp_ratio(state_reward: float, proposal_reward: float, temperature: float = 1, objective: str = "min") -> float:
     if objective == "min":
         exponent = -(state_reward - proposal_reward) / temperature
@@ -166,6 +193,7 @@ def _exp_ratio(state_reward: float, proposal_reward: float, temperature: float =
         exponent = (state_reward - proposal_reward) / temperature
     exponent = max(min(exponent, 700), -700)  # clamp to safe range for exp
     return math.exp(exponent)
+
 
 def go_to_state(state: List[int], root: "_Node", env: Env):
     node = root
@@ -178,6 +206,7 @@ def go_to_state(state: List[int], root: "_Node", env: Env):
 
         node = new_child
     return node
+
 
 def complete_path_until_terminal(proposed_path: List[int], node: "_Node", env: Env, uct_inf_softening: float, p_max: float):          
     while not env.is_terminal():
@@ -205,6 +234,7 @@ class MMCTS_Search():
         self.base_temp = 1000
         self.decay = 0.05
 
+    
     def mmcts_search_turn_based(self, iterations: int) -> int:
         if self.root_env.get_state() == []:
             player = None

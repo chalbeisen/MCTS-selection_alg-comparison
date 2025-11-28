@@ -1,28 +1,28 @@
 import torch
 
-
 def uct_distribution(puct_values: torch.Tensor, inf_value_cap_coeff: float = 10.0) -> torch.Tensor:
     """
     UCT distribution. UCT values can be any real number (e.g. -inf).
     """
     # treat infinities
-    #sorted_puct = puct_values.sort().values
-    infinite_puct = puct_values.abs() == float("inf")
-    # normalize only if there are values that are not inf
-    if len(puct_values[infinite_puct]) != len(puct_values):
-        largest_finite_puct = puct_values[~infinite_puct].abs().max()
-        if largest_finite_puct > 0: 
-            capped_puct = puct_values.clone() / largest_finite_puct
-        else:
-            capped_puct = puct_values.clone()
-        capped_puct[infinite_puct] = inf_value_cap_coeff * torch.sign(puct_values[infinite_puct])
-    else:
-        capped_puct = inf_value_cap_coeff * torch.sign(puct_values)
+    inf_mask = torch.isinf(puct_values)
 
-    # softmax
-    puct_probabilities = torch.softmax(capped_puct, dim=0)
+    if inf_mask.all():
+        capped = inf_value_cap_coeff * torch.sign(puct_values)
+        return torch.softmax(capped, dim=0).float()
 
-    return puct_probabilities.to(dtype=torch.float32)
+    finite_vals = puct_values[~inf_mask]
+
+    max_abs = finite_vals.abs().max()
+
+    capped = puct_values.clone()
+
+    if max_abs > 0:
+        capped[~inf_mask] /= max_abs
+
+    capped[inf_mask] = inf_value_cap_coeff * torch.sign(puct_values[inf_mask])
+
+    return torch.softmax(capped, dim=0).float()
 
 
 if __name__ == "__main__":
