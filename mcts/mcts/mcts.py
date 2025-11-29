@@ -94,10 +94,6 @@ class MCTS_Search():
         else:
             player = self.root_env.get_current_player()
 
-        # always start search from current state of global env
-        initial_state = self.root_env.get_state()
-        self.root_env.reset_to_initial_state(initial_state)
-
         root = MCTS_Node_TurnBased(parent=None, action=None, untried_actions=list(self.root_env.get_legal_actions()), state = [], player = player)
 
         for i in range(iterations):
@@ -117,6 +113,7 @@ class MCTS_Search():
             node._backpropagate(reward, env)
         best_child_action = root._best_child_N().action
         self.root_env.step(best_child_action)
+        self.root_env.set_initial_state(self.root_env.get_state())
 
         return best_child_action
     

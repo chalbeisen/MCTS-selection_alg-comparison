@@ -59,8 +59,7 @@ if __name__ == "__main__":
         np.random.seed(i)
         # switch up first player:
         # search_algorithms[0], search_algorithms[1] = search_algorithms[1], search_algorithms[0]
-        env.set_initial_state([])
-        env.reset_to_initial_state()
+        env.reset_to_initial_state([])
         while not env.is_terminal():
             current_player = env.get_current_player()
             # Get search_fn

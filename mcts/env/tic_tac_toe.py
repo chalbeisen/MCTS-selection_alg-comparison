@@ -14,8 +14,11 @@ class TicTacToeEnv(Env_TurnBased):
     
     def set_initial_state(self, initial_state: List[int]):
         self.initial_state = initial_state
+        if self.initial_state != []:
+            self.legal_actions = self.state.legal_actions()
 
-    def reset_to_initial_state(self):
+    def reset_to_initial_state(self, initial_state: List[int]):
+        self.initial_state = initial_state
         self.state = self.game.new_initial_state()
         for action in self.initial_state:
             self.step(action)
@@ -57,8 +60,8 @@ class TicTacToeEnv(Env_TurnBased):
     def is_terminal(self) -> bool:
         return self.state.is_terminal()
     
-    def update(self, new_path: List[int], initial_state: List[int] = []):
-        self.reset_to_initial_state()
+    def update(self, new_path: List[int]):
+        self.reset_to_initial_state(self.initial_state)
         for action in new_path:
             reward = self.step(action)
         return reward
