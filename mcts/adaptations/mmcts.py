@@ -41,7 +41,6 @@ class MMCTS_Node(_Node):
     def _best_action_capped_distr(self, uct_inf_softening: float, p_max: float) -> "_Node":
         legal_mutation_actions = self.untried_actions
         uct_values = self.compute_uct_scores()
-
         # Append +inf for untried actions
         node_uct_values = torch.cat([uct_values, torch.full((len(legal_mutation_actions),), float("inf"), dtype=torch.float32)])
         candidates = [child.action for child in self.children] + legal_mutation_actions

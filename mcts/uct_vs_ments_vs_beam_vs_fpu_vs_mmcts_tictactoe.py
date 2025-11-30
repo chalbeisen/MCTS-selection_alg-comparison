@@ -40,7 +40,7 @@ if __name__ == "__main__":
         "MMCTS": {
             "instance": MMCTS_Search(env),
             "search_fn": "mmcts_search_turn_based",
-            "params": {'base_temp': 1.0, 'decay': 0.0001, 'uct_inf_softening': 5, 'p_max': 1.5}
+            "params": {'base_temp': 1000, 'decay': 0.05, 'uct_inf_softening': 2, 'p_max': 1.5}
         },
     }
 
