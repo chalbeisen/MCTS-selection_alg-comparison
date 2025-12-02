@@ -13,6 +13,7 @@ import math
 
 from eval.utils import *
 from open_spiel.python.algorithms import mcts
+from open_spiel.python.algorithms.mcts import SearchNode
 
 colors_box_plot = [ "#FFFFFF00", "#09a93e3e", "#09a93e8c", "#09a93ea7", "#09a93ed3", "#09a93e",]
 colors_hist_plot = [ "#FFFFFF00", "#09a93e3e", "#09a93e8c", "#09a93ea7", "#09a93ed3", "#09a93e",]
@@ -26,7 +27,7 @@ if __name__ == "__main__":
     N = 5
 
     nr_of_runs = 50
-    iterations = 1000
+    iterations = 50
     base_temp = 1
     decay = 0.0
     epsilon = 2.0
@@ -45,14 +46,16 @@ if __name__ == "__main__":
                                      uct_c=math.sqrt(2),
                                      max_simulations=iterations,
                                      evaluator=evaluator,
-                                     random_state=rng),                        
+                                     random_state=rng,
+                                     solve=False,
+                                     dirichlet_noise=None, 
+                                     child_selection_fn=SearchNode.uct_value),                        
             "search_fn": "step",                        
         },
-        
         "MMCTS": {
             "instance": MMCTS_Search(env),
             "search_fn": "mmcts_search_turn_based",
-            "params": {'base_temp': 1000, 'decay': 0.05, 'uct_inf_softening': 2, 'p_max': 1.5}
+            "params": {'base_temp': 1, 'decay': 0.00, 'uct_inf_softening': 2, 'p_max': 1.5}
         },
     }
 
@@ -67,6 +70,7 @@ if __name__ == "__main__":
         # switch up first player:
         # search_algorithms[0], search_algorithms[1] = search_algorithms[1], search_algorithms[0]
         env.reset_to_initial_state([])
+        j = 0
         while not env.is_terminal():
             current_player = env.get_current_player()
             # Get search_fn
@@ -74,16 +78,15 @@ if __name__ == "__main__":
             cfg = search_algorithms[current_player_alg]
             search_fn = getattr(cfg["instance"], cfg["search_fn"]) 
             if current_player_alg == "MMCTS":
-                action = search_fn(iterations=iterations, **cfg["params"])
+                action, root = search_fn(iterations=iterations, **cfg["params"])
+                draw_tree(root, env, filename=f"tree_{current_player_alg}_tictactoe_run{i}_{j}", max_depth=9, is_print_action = False, add_terminal_state = True)
             elif current_player_alg == "MCTS":
                 action = search_fn(env.state)
                 env.state.apply_action(action)
                 env.set_initial_state(env.get_state())
+            j+=1
                 
-            print(env.get_state())
-            print(env.state)
         print(env.get_state())
-        
         winner = env.get_winner()
         print(winner)
         if winner >= 0:
