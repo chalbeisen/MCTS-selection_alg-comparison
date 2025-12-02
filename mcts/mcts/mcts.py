@@ -65,12 +65,6 @@ class MCTS_Node_TurnBased(MCTS_Node, _NodeTurnBased):
         self.children.append(child)
 
         return child
-
-    def rollout(self, env: Env):
-        node = self
-        while not env.is_terminal():
-            node, reward = node._expand_random(env)
-        return node, reward
     
     def _backpropagate(self, reward: float, env: Env):
         self.visits += 1
@@ -114,10 +108,7 @@ class MCTS_Search():
                     node, reward = node._select_best_child(env)
                 else:
                     # Expansion
-                    node, reward = node._expand_all_choose_random(env)
-                    if not env.is_terminal():
-                        # Rollout
-                        node, reward = node.rollout(env)
+                    node, reward = node._expand_random(env)
                 path.append(node.action)
 
             # Backpropagation
