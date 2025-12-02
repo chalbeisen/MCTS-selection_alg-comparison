@@ -84,6 +84,14 @@ if __name__ == "__main__":
                 env.state.apply_action(action)
                 env.set_initial_state(env.get_state())
                 #draw_tree_bot(root, env, filename=f"tree_{current_player_alg}_tictactoe_run{i}_{j}", max_depth=9, is_print_action = False, add_terminal_state = True)
+
+            if j % 2 != 0:
+                print("\nj   Action  Visit_Count  Value")
+                print("###############################")
+                result = sorted([(c.action, c.visits, c.value) for c in root.children], key=lambda x: x[0])
+                for (action, visit_count, value) in result:
+                    print(f"{j}      {action}  {visit_count}  {round(value, 3)}")
+
             j+=1
                 
         print(env.get_state())
