@@ -25,15 +25,15 @@ seed = 1
 if __name__ == "__main__":
     N = 5
 
-    nr_of_runs = 1
-    iterations = 10000
+    nr_of_runs = 50
+    iterations = 2000
     base_temp = 1
     decay = 0.0
     epsilon = 2.0
 
     env = TicTacToeEnv()
 
-    seed = 0
+    seed = 1
     random.seed(seed)
     torch.manual_seed(seed)
     np.random.seed(seed)
@@ -78,12 +78,12 @@ if __name__ == "__main__":
             search_fn = getattr(cfg["instance"], cfg["search_fn"]) 
             if current_player_alg == "MCTS_2":
                 action, root = search_fn(iterations=iterations, **cfg["params"])
-                draw_tree(root, env, filename=f"tree_{current_player_alg}_tictactoe_run{i}_{j}", max_depth=9, is_print_action = False, add_terminal_state = True)
+                #draw_tree(root, env, filename=f"tree_{current_player_alg}_tictactoe_run{i}_{j}", max_depth=9, is_print_action = False, add_terminal_state = True)
             elif current_player_alg == "MCTS_1":
                 action, root = search_fn(env.state)
                 env.state.apply_action(action)
                 env.set_initial_state(env.get_state())
-                draw_tree_bot(root, env, filename=f"tree_{current_player_alg}_tictactoe_run{i}_{j}", max_depth=9, is_print_action = False, add_terminal_state = True)
+                #draw_tree_bot(root, env, filename=f"tree_{current_player_alg}_tictactoe_run{i}_{j}", max_depth=9, is_print_action = False, add_terminal_state = True)
             j+=1
                 
         print(env.get_state())

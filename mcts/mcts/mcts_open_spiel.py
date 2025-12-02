@@ -70,7 +70,8 @@ class RandomRolloutEvaluator(Evaluator):
           action = self._random_state.choice(working_state.legal_actions())
         working_state.apply_action(action)
 
-        child = SearchNode(action, working_state.current_player(), self.prior(working_state), state = node.state + [action])
+        child = SearchNode(action, working_state.current_player(), self.prior_const(working_state), state = node.state + [action])
+        child.explore_count += 1
         node.children.append(child)
 
         length += 1
@@ -90,6 +91,10 @@ class RandomRolloutEvaluator(Evaluator):
     else:
       legal_actions = state.legal_actions(state.current_player())
       return [(action, 1.0 / len(legal_actions)) for action in legal_actions]
+    
+  def prior_const(self, state):
+    legal_actions = state.legal_actions(state.current_player())
+    return [(action, 1) for action in legal_actions]
 
 
 class SearchNode(object):
@@ -336,6 +341,7 @@ class MCTSBot(pyspiel.Bot):
       working_state: The state of the game at the leaf node.
     """
     visit_path = [root]
+    visit_path_eval = [root_eval]
     working_state = state.clone()
     current_node = root
     current_node_eval = root_eval
@@ -344,7 +350,7 @@ class MCTSBot(pyspiel.Bot):
                working_state.is_chance_node() and self.dont_return_chance_node):
       if not current_node.children:
         # For a new node, initialize its state, then choose a child as normal.
-        legal_actions = self.evaluator.prior(working_state)
+        legal_actions = self.evaluator.prior_const(working_state)
         if current_node is root and self._dirichlet_noise:
           epsilon, alpha = self._dirichlet_noise
           noise = self._random_state.dirichlet([alpha] * len(legal_actions))
@@ -382,8 +388,9 @@ class MCTSBot(pyspiel.Bot):
       working_state.apply_action(chosen_child.action)
       current_node = chosen_child
       visit_path.append(current_node)
+      visit_path_eval.append(current_node_eval)
 
-    return visit_path, working_state, current_node_eval
+    return visit_path, working_state, current_node_eval, visit_path_eval
 
   def mcts_search(self, state):
     """A vanilla Monte-Carlo Tree Search algorithm.
@@ -437,7 +444,7 @@ class MCTSBot(pyspiel.Bot):
     root = SearchNode(None, state.current_player(), 1)
     root_eval = deepcopy(root)
     for _ in range(self.max_simulations):
-      visit_path, working_state, current_node_eval = self._apply_tree_policy(root, root_eval, state)
+      visit_path, working_state, current_node_eval, visit_path_eval = self._apply_tree_policy(root, root_eval, state)
       
       if working_state.is_terminal():
         returns = working_state.returns()
@@ -457,6 +464,12 @@ class MCTSBot(pyspiel.Bot):
         node = visit_path.pop()
         node.total_reward += target_return
         node.explore_count += 1
+
+        target_return_eval = returns[visit_path_eval[decision_node_idx].player]
+        node_eval = visit_path_eval.pop()
+        node_eval.total_reward += target_return_eval
+        node_eval.explore_count += 1
+
 
         if solved and node.children:
           player = node.children[0].player
