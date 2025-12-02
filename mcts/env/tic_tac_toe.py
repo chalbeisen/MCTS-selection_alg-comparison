@@ -11,6 +11,7 @@ class TicTacToeEnv(Env_TurnBased):
     def __init__(self):
         self.initial_state = []
         self.game = pyspiel.load_game(f"tic_tac_toe")
+        self.state = self.game.new_initial_state()
     
     def set_initial_state(self, initial_state: List[int]):
         self.initial_state = initial_state

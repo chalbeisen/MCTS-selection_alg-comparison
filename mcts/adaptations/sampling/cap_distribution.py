@@ -54,6 +54,12 @@ def cap_distribution(p: torch.Tensor, p_max: float, eps: float = 1e-12) -> torch
     return p_out
 
 def cap_distribution_wo_redistribution(p: torch.Tensor, p_max: float) -> torch.Tensor:
+    """
+    Caps each probability in p by p_max, without redistribution of excess probabilty. 
+    Args:
+        p (torch.Tensor): 1D tensor of probabilities (must sum to 1, ideally).
+        p_max (float): Maximum allowed probability for any entry.
+    """
     distribution = torch.minimum(p, torch.full_like(p, p_max))
     distribution /= distribution.sum() 
     return distribution

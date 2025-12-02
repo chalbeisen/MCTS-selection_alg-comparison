@@ -26,7 +26,22 @@ def draw_tree(root: node._Node, env: Env, filename="tree", max_depth: int = 3, b
         'fillcolor': 'white',
     })
     env_clone = env.clone()
-    env_clone.set_initial_state(env_clone.get_state()[:-1])
+    state = env_clone.get_state()[:-1]
+    env_clone.set_initial_state(state)
+
+    # draw action history before the root
+    prev_node_id = None
+    history_node_ids = []
+    for i, action in enumerate(state):
+        hist_id = f"hist_{i}"
+        hist_label = f"{action}"
+        dot.node(hist_id, hist_label, style="filled", fillcolor="lightgrey", fontsize="18")
+        if prev_node_id is not None:
+            dot.edge(prev_node_id, hist_id)
+        prev_node_id = hist_id
+        history_node_ids.append(hist_id)
+    # connect history to root later
+
     def add_node(node: node._Node, parent_id: str = None, depth: int = 0., best_path = None, is_print_action: bool = True, add_terminal_state: bool = False):
         
         if depth > max_depth:
@@ -55,8 +70,85 @@ def draw_tree(root: node._Node, env: Env, filename="tree", max_depth: int = 3, b
             dot.edge(node_id, terminal_id)
             
     add_node(root, best_path=best_path, is_print_action=is_print_action, add_terminal_state=add_terminal_state)
+    
+    # Connect last history action with root
+    if history_node_ids:
+        dot.edge(history_node_ids[-1], str(id(root)))
+    
     dot.render(filename, format="pdf", cleanup=True)
     print(f"Tree saved as {filename}.pdf")
+
+def draw_tree_bot(root: node._Node, env: Env, filename="tree", max_depth: int = 3, best_path: List[Tuple[int, int]] = None, is_print_action: bool = True, add_terminal_state: bool = False):
+    """
+    Draw a UCT tree up to a maximum depth.
+    
+    root: UCT_Node
+    filename: output file name without extension
+    max_depth: limit depth to avoid huge trees
+    """
+    dot = Digraph(comment='Tree')
+    dot.attr(dpi='200')
+    dot.attr(rankdir='TB')       # makes the tree tall instead of wide
+    dot.node_attr.update({
+        'fontsize': '20',
+        'shape': 'box',
+        'style': 'filled',
+        'fillcolor': 'white',
+    })
+    env_clone = env.clone()
+    state = env_clone.get_state()[:-1]
+    env_clone.set_initial_state(state)
+
+    # draw action history before the root
+    prev_node_id = None
+    history_node_ids = []
+    for i, action in enumerate(state):
+        hist_id = f"hist_{i}"
+        hist_label = f"{action}"
+        dot.node(hist_id, hist_label, style="filled", fillcolor="lightgrey", fontsize="18")
+        if prev_node_id is not None:
+            dot.edge(prev_node_id, hist_id)
+        prev_node_id = hist_id
+        history_node_ids.append(hist_id)
+    # connect history to root later
+
+    def add_node(node: node._Node, parent_id: str = None, depth: int = 0., best_path = None, is_print_action: bool = True, add_terminal_state: bool = False):
+        
+        if depth > max_depth:
+            return
+        node_id = str(id(node))
+        if is_print_action:
+            action = env_clone.get_action(node.action) if node.action is not None else None
+        else:
+            action = node.action
+        value = node.explore_count and node.total_reward / node.explore_count
+        label = f"Action: {action}\nPlayer: {node.player}\nVisits: {node.explore_count}\nValue: {value:.2f}"
+        
+        is_along_best_path = best_path is not None and action == best_path[0]
+        color = "red" if is_along_best_path else "black"
+        dot.node(node_id, label, style="filled", penwidth="2", color = color, fillcolor="white")
+        if parent_id is not None:
+            dot.edge(parent_id, node_id)
+        if node.children:
+            for child in node.children:
+                next_path = best_path[1:] if is_along_best_path else None
+                add_node(child, node_id, depth + 1, best_path=next_path, add_terminal_state=add_terminal_state)
+        elif add_terminal_state:
+            env_clone.update(node.state)
+            label = env_clone.state.to_string()
+            terminal_id = f"{node_id}_terminal"
+            dot.node(terminal_id, label, style="filled", fillcolor="lightgrey")
+            dot.edge(node_id, terminal_id)
+            
+    add_node(root, best_path=best_path, is_print_action=is_print_action, add_terminal_state=add_terminal_state)
+    
+    # Connect last history action with root
+    if history_node_ids:
+        dot.edge(history_node_ids[-1], str(id(root)))
+
+    dot.render(filename, format="pdf", cleanup=True)
+    print(f"Tree saved as {filename}.pdf")
+
 
 def box_plot(data, yerrors, ylabel, labels, colors, edgecolor, figsize = (8,6), save_path = None, patterns = None):
     plt.figure(figsize=figsize)

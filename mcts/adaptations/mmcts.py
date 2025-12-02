@@ -10,10 +10,18 @@ from mcts.node import _Node, _NodeTurnBased
 from env.env import Env
 from copy import copy
 
+def get_device():
+    if torch.cuda.is_available():      
+        return torch.device("cuda")
+    if torch.backends.mps.is_available():  
+        return torch.device("mps")
+    return torch.device("cpu")    
 
 class MMCTS_Node(_Node):
     def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int], state: List[int]):
         super().__init__(parent, action, untried_actions, state)
+        #self.device = get_device()
+        self.device = "cpu"
 
     def get_player(self):
         return self.player 
@@ -28,11 +36,11 @@ class MMCTS_Node(_Node):
     
     def compute_uct_scores(self, explore_const: float = math.sqrt(2)) -> torch.Tensor:
         parent_visits = max(self.visits, 1)
-        values_tensor = torch.tensor([c.value for c in self.children], dtype=torch.float32)
-        visits_tensor = torch.tensor([c.visits for c in self.children], dtype=torch.float32)
+        values_tensor = torch.tensor([c.value for c in self.children], dtype=torch.float32, device=self.device)
+        visits_tensor = torch.tensor([c.visits for c in self.children], dtype=torch.float32, device=self.device)
         
         safe_visits = torch.clamp(visits_tensor, min=1.0)
-        uct_scores = (values_tensor / safe_visits) + explore_const * torch.sqrt(torch.log(torch.tensor(parent_visits, dtype=torch.float32)) / safe_visits)
+        uct_scores = (values_tensor / safe_visits) + explore_const * torch.sqrt(torch.log(torch.tensor(parent_visits, dtype=torch.float32, device=self.device)) / safe_visits)
 
         uct_scores[visits_tensor == 0] = float("inf")
 
@@ -42,7 +50,7 @@ class MMCTS_Node(_Node):
         legal_mutation_actions = self.untried_actions
         uct_values = self.compute_uct_scores()
         # Append +inf for untried actions
-        node_uct_values = torch.cat([uct_values, torch.full((len(legal_mutation_actions),), float("inf"), dtype=torch.float32)])
+        node_uct_values = torch.cat([uct_values, torch.full((len(legal_mutation_actions),), float("inf"), dtype=torch.float32, device = self.device)])
         candidates = [child.action for child in self.children] + legal_mutation_actions
         distribution = uct_distribution(node_uct_values, uct_inf_softening)
         distribution = cap_distribution_wo_redistribution(distribution, (1+p_max)/len(candidates))
@@ -60,11 +68,10 @@ class MMCTS_Node(_Node):
     def _backpropagate(self, reward: float) -> None:
         self.visits += 1
         self.edge_reward = reward
-        if self.value is None:
+        if self.parent is None:
             self.value = reward
         else:
             self.value = (self.value * (self.visits - 1) + reward) / self.visits
-        if self.parent:
             self.parent._backpropagate(reward)
         return
 
@@ -89,11 +96,13 @@ class MMCTS_Node_TurnBased(MMCTS_Node, _NodeTurnBased):
 
     def _backpropagate(self, reward: float, env: Env):
         self.visits += 1
+        node_reward = reward[self.player]
 
         # Detect root node
-        if self.action is not None:
-            curr_reward = self._determine_reward(reward, env)
-            self.value = (self.value * (self.visits - 1) + curr_reward) / self.visits
+        if self.value is None:
+            self.value = node_reward
+        else:
+            self.value = (self.value * (self.visits - 1) + node_reward) / self.visits
 
         if self.parent is not None:
             self.parent._backpropagate(reward, env)
@@ -106,13 +115,15 @@ class MMCTS_Search():
         self.best_iteration = 0
         self.path_over_iter = []
         self.root_env = root_env
+        #self.device = get_device()
+        self.device = "cpu"
 
     def complete_path_until_terminal(self, proposed_path: List[int], node: "_Node", env: Env, uct_inf_softening: float, p_max: float):          
         while not env.is_terminal():
             child_action = node._best_action_capped_distr(uct_inf_softening, p_max)
             proposed_path = proposed_path + [child_action]
             reward = env.step(child_action)
-
+            # TODO: change order of create new child and env.step
             new_child = node._get_node_by_action(child_action)
             if new_child is None:
                 new_child = node._create_new_child(child_action, env)
@@ -154,7 +165,7 @@ class MMCTS_Search():
     def mutate(self, node, original_path: List[int],  mutate_index: int, mutate_value: float, env: Env):
         new_path = original_path[:mutate_index] + [mutate_value]
         reward = env.update(new_path)
-
+        # TODO: change order of create new child and env.update
         new_child = node._get_node_by_action(mutate_value)
         if new_child is None:
             new_child = node._create_new_child(mutate_value, env)
@@ -184,7 +195,7 @@ class MMCTS_Search():
 
             for j in range(len(original_path)):
                 legal_mutation_actions = node.untried_actions
-                node_uct_values = torch.tensor([child.uct_score() for child in node.children] + [float("inf")] * len(legal_mutation_actions))
+                node_uct_values = torch.tensor([child.uct_score() for child in node.children] + [float("inf")] * len(legal_mutation_actions), dtype=torch.float32, device=self.device)
                 candidates = [child.action for child in node.children] + legal_mutation_actions
                 distribution = uct_distribution(node_uct_values, uct_inf_softening)
                 distribution = cap_distribution(distribution, (1+p_max)/len(candidates))
@@ -257,7 +268,7 @@ class MMCTS_Search():
 
                 # Backpropagation
                 node._backpropagate(reward, env)
-                ratio = self._exp_ratio(state_reward[player], reward[player], temperature=tempscale)
+                ratio = self._exp_ratio(state_reward[player], reward[player], temperature=tempscale, objective="min")
 
                 accept_prob = min(1, ratio)
                 if torch.rand(1) < accept_prob:
@@ -273,4 +284,4 @@ class MMCTS_Search():
         self.root_env.step(best_child_action)
         self.root_env.set_initial_state(self.root_env.get_state())
 
-        return best_child_action
+        return best_child_action, root

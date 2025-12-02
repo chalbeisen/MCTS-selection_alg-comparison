@@ -57,17 +57,20 @@ class MCTS_Node_TurnBased(MCTS_Node, _NodeTurnBased):
     
     def _create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
-        next_player = env.get_current_player()
-        if next_player >=0 :
-            player = 1 - env.get_current_player()
-        else:
+        player = env.get_current_player()
+        if player < 0:
             player = 1 - self.player
         state = self.state + [action] if self.state else [action]
-        child = MCTS_Node_TurnBased(parent=self, action=action, untried_actions=untried_actions, state = env.get_state(), player=player)
+        child = MCTS_Node_TurnBased(parent=self, action=action, untried_actions=untried_actions, state = state, player=player)
         self.children.append(child)
 
         return child
 
+    def rollout(self, env: Env):
+        node = self
+        while not env.is_terminal():
+            node, reward = node._expand_random(env)
+        return node, reward
     
     def _backpropagate(self, reward: float, env: Env):
         self.visits += 1
@@ -88,6 +91,11 @@ class MCTS_Search():
         self.path_over_iter = []
         self.root_env = root_env
 
+    def rollout(self, node: "_Node", env: Env):
+        while not env.is_terminal():
+            node, reward = node._expand_random(env)
+        return node, reward
+    
     def mcts_search_turn_based(self, iterations: int) -> int:
         if self.root_env.get_state() == []:
             player = None
@@ -106,7 +114,10 @@ class MCTS_Search():
                     node, reward = node._select_best_child(env)
                 else:
                     # Expansion
-                    node, reward = node._expand_random(env)
+                    node, reward = node._expand_all_choose_random(env)
+                    if not env.is_terminal():
+                        # Rollout
+                        node, reward = node.rollout(env)
                 path.append(node.action)
 
             # Backpropagation
@@ -115,7 +126,7 @@ class MCTS_Search():
         self.root_env.step(best_child_action)
         self.root_env.set_initial_state(self.root_env.get_state())
 
-        return best_child_action
+        return best_child_action, root
     
     def mcts_search(self, iterations: int) -> int:
         root = MCTS_Node(parent=None, action=None, untried_actions=list(self.root_env.get_legal_actions()), state = [])

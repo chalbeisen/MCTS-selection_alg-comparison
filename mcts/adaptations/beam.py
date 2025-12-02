@@ -8,20 +8,52 @@ from mcts.node import _Node
 
 
 class BeamNode(_Node):
-    def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int], state: List[int]):
+    def __init__(self, parent: Optional["_Node"], 
+                 action: Optional[int], 
+                 untried_actions: List[int], 
+                 state: List[int]):
         super().__init__(parent, action, untried_actions, state)
         self.depth = 0 if parent is None else parent.depth + 1
 
     def _best_child(self) -> "_Node":
+        """
+        Select the child node with the highest UCT score.
+        Args:
+            None
+
+        Returns:
+            _Node: The child with the highest UCT value.
+        """
         child = max(self.children, key=lambda c: c.uct_score())
         return child
 
     def _select_best_child(self, env: Env) -> tuple["_Node", float]:
+        """
+        Select the highest-UCT child and apply its action in the environment.
+
+        Args:
+            env (Env): Environment supporting `step(action)` → reward.
+
+        Returns:
+            tuple:
+                - _Node: The selected child node.
+                - float: The reward returned by game.
+        """
         child = self._best_child()
         reward = env.step(child.action)
         return child, reward
     
     def _create_new_child(self, action: int, env: Env) -> "_Node":
+        """
+        Create and return a new child node produced by taking an action.
+
+        Args:
+            action (int): Action used to create the new child.
+            env (Env): Environment used to update untried actions.
+
+        Returns:
+            _Node: The newly created BeamNode.
+        """
         untried_actions = self.update_untried_actions(action, env)
         state = self.state + [action] if self.state else [action]
         child = BeamNode(parent=self, action=action, untried_actions=untried_actions, state=state)
@@ -34,6 +66,19 @@ class BEAM_Search:
         self.root_env = root_env
         
     def beam_mcts_search(self, iterations, beam_width: int = 20, sim_limit: int = 100)-> tuple[list[int], float, int]:
+        """
+        MCTS search with beam pruning. Run MCTS search until the amount of rollouts reaches the depth limit and 
+        prunes the tree at a given depth, keeping the top 
+
+        Args:
+            action (int): Action used to create the new child.
+            env (Env): Environment used to update untried actions.
+
+        Returns:
+            list[int]: root of the tree
+            float:
+            int:
+        """
         root = BeamNode(parent=None, action=None, untried_actions=list(self.root_env.get_legal_actions()), state = [])
         depth_counter: Dict[int, int] = {}
         best_path: list[int] = []

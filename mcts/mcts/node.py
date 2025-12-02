@@ -25,6 +25,7 @@ class _Node:
     def update_untried_actions(self, action: int, env: Env) -> List[int]:
         untried_actions = env.get_legal_actions()
         self.untried_actions.remove(action)
+        untried_actions.remove(action)
         return untried_actions
     
     # working only for tsp
@@ -38,14 +39,23 @@ class _Node:
     
     def _expand(self, env: Env) -> tuple["_Node", float]:
         action = self.untried_actions[0]
-        reward = env.step(action)
         child = self._create_new_child(action, env)
+        reward = env.step(action)
         return child, reward            
     
     def _expand_random(self, env: Env) -> tuple["_Node", float]:
         action = random.choice(self.untried_actions)
-        reward = env.step(action)
         child = self._create_new_child(action, env)
+        reward = env.step(action)
+        return child, reward  
+    
+    def _expand_all_choose_random(self, env: Env) -> tuple["_Node", float]:
+        untried_actions = self.untried_actions.copy()
+        for action in untried_actions:
+            self._create_new_child(action, env)
+        action = random.choice(untried_actions)
+        reward = env.step(action)
+        child = self._get_node_by_action(action)
         return child, reward  
     
     def _get_state(self) -> List[int]:
@@ -66,10 +76,4 @@ class _NodeTurnBased(_Node):
         raise NotImplementedError("this method should be implemented by subclass")
 
     def _determine_reward(self, reward: float, env: Env):
-        reward = reward[self.player]
-        # for root node child don`t change reward value
-        if self.parent.player is None:
-            return reward
-        if reward == 0:
-            return reward
-        return -reward
+        return reward[self.player]

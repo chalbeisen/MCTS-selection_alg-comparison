@@ -11,6 +11,7 @@ class GoEnv(Env_TurnBased):
     def __init__(self, N: int = 5):
         self.initial_state = []
         self.game = pyspiel.load_game(f"go(board_size={N})")
+        self.state = self.game.new_initial_state()
     
     def set_initial_state(self, initial_state: List[int]):
         self.initial_state = initial_state
