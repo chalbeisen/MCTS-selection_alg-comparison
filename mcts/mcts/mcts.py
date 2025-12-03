@@ -46,75 +46,18 @@ class MCTS_Node(_Node):
             self.parent._backpropagate(reward, env)
         return
 
-class MCTS_Node_TurnBased(MCTS_Node, _NodeTurnBased):
-    def __init__(self, parent, action, untried_actions, state: List[int], player=None):
-        super().__init__(parent, action, untried_actions, state)
-        self.player = player
-
-    def get_player(self):
-        return self.player 
-    
-    
-    def _create_new_child(self, action: int, env: Env) -> "_Node":
-        untried_actions = self.update_untried_actions(action, env)
-        player = env.get_current_player()
-        if player < 0:
-            player = 1 - self.player
-        state = self.state + [action] if self.state else [action]
-        child = MCTS_Node_TurnBased(parent=self, action=action, untried_actions=untried_actions, state = state, player=player)
-        self.children.append(child)
-
-        return child
-    
-    def _backpropagate(self, reward: float, env: Env):
-        self.visits += 1
-
-        # Detect root node
-        if self.action is not None:
-            curr_reward = self._determine_reward(reward, env)
-            self.value += curr_reward
-
-        if self.parent is not None:
-            self.parent._backpropagate(reward, env)
-
 class MCTS_Search():
     def __init__(self, root_env:Env):
         self.max_reward = -np.inf
-        self.best_path = []
-        self.best_iteration = 0
-        self.path_over_iter = []
         self.root_env = root_env
     
-    def mcts_search_turn_based(self, iterations: int) -> int:
-        if self.root_env.get_state() == []:
-            player = None
-        else:
-            player = self.root_env.get_current_player()
-
-        root = MCTS_Node_TurnBased(parent=None, action=None, untried_actions=list(self.root_env.get_legal_actions()), state = [], player = player)
-
-        for i in range(iterations):
-            node = root
-            env = self.root_env.clone()
-            path = []
-            while not env.is_terminal():
-                if node.untried_actions == [] and node.children:
-                    # Selection
-                    node, reward = node._select_best_child(env)
-                else:
-                    # Expansion
-                    node, reward = node._expand_random(env)
-                path.append(node.action)
-
-            # Backpropagation
-            node._backpropagate(reward, env)
-        best_child_action = root._best_child_N().action
-        self.root_env.step(best_child_action)
-        self.root_env.set_initial_state(self.root_env.get_state())
-
-        return best_child_action, root
-    
     def mcts_search(self, iterations: int) -> int:
+        """
+        Performs standard Monte Carlo Tree Search. 
+
+        Args:
+            iterations (int): Number of search iterations.
+        """
         root = MCTS_Node(parent=None, action=None, untried_actions=list(self.root_env.get_legal_actions()), state = [])
 
         max_reward = -np.inf
@@ -132,7 +75,7 @@ class MCTS_Search():
                     node, reward = node._select_best_child(env)
                 else:
                     # Expansion
-                    node, reward = node._expand(env)
+                    node, reward = node._expand_random(env)
                 path.append(node.action)
 
             # Backpropagation

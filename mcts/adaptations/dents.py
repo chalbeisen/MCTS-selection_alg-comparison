@@ -25,11 +25,8 @@ class Dents_Node(_Node):
         self.Q_hat = {}
         self.HQ = {}
         self.HV = 0.0
-        self.Q_sum = {}      # cumulative reward sum per action (for stochastic updates)
-        self.N_sa = {}
 
     def _boltzmann_policy(self, temp: float, epsilon: float) -> tuple[List[float], List[int]]:
-        
         actions = [child.action for child in self.children] + self.untried_actions
         if len(actions) == 0:
             return np.array([]), []
@@ -66,7 +63,7 @@ class Dents_Node(_Node):
     def _select_child(self, env: Env, temp: float, epsilon: float) -> tuple["_Node", float]:
         action = self._select_action(temp, epsilon)
         reward = env.step(action)
-        selected_child = self._get_node_by_action(action)
+        selected_child = self._get_child_by_action(action)
         if selected_child is None:
             selected_child = self._create_new_child(action, env)
             selected_child.edge_reward = reward
@@ -98,41 +95,7 @@ class Dents_Node(_Node):
             cur.edge_reward = reward
             # move up
             cur = cur.parent
-        
-    def _backpropagate_stochastic(self, temp: float, reward: float, node: "_Node", epsilon: float):
-        node.V_hat = reward
-        cur = node
-        while cur is not None:
-            # increment visits
-            cur.visits += 1
-
-            # Bellman updates for each child (equation 23)
-            for child in cur.children:
-                # update cumulative sum of Q for stochastic rewards
-                cur.Q_sum[child.action] = cur.Q_sum.get(child.action, 0.0) + child.edge_reward + child.V_hat
-                cur.N_sa[child.action] = cur.N_sa.get(child.action, 0) + 1
-
-                # compute mean Q value for that (s,a)
-                N_sa = cur.N_sa[child.action]
-                cur.Q_hat[child.action] = cur.Q_sum[child.action] / N_sa
-
-                # entropy contribution
-                cur.HQ[child.action] = child.HV
-
-            # update node value as max over child Qs (equation 18)
-            if cur.Q_hat:
-                cur.V_hat = max(cur.Q_hat.values())
-            else:
-                cur.V_hat = cur.V_hat
-
-            # update entropy of Boltzmann policy (equation 22)
-            probs, actions = cur._boltzmann_policy(temp, epsilon)
-            cur.HV = entropy(probs) + np.sum(
-                [p * cur.HQ.get(a, 0.0) for p, a in zip(probs, actions)]
-            )
-
-            # move up the tree
-            cur = cur.parent
+    
 
 class DENTS_Search:
     def __init__(self, 
@@ -145,6 +108,16 @@ class DENTS_Search:
                      decay: float = 0.001,
                      epsilon: float = 1.0):
 
+        """
+        Performs Decaying Entropy Tree-Search (DENTS) to find high-reward paths in the environment.
+
+        Args:
+            iterations (int): Number of search iterations.
+            base_temp (float): Initial temperature for Boltzmann exploration.
+            decay (float): Temperature decay per node visit, controlling the exploration-exploitation trade-off.
+            epsilon (float): Exploration factor for epsilon-greedy selection. 
+
+        """
         root = Dents_Node(parent=None, action=None, untried_actions=list(self.root_env.get_legal_actions()), state = [])
         max_reward = -np.inf
         best_path = []
@@ -157,10 +130,12 @@ class DENTS_Search:
             path = []
 
             while not env.is_terminal():
+                # Selection
                 tempscale = base_temp / (1.0 + decay * node.visits)
                 node, reward = node._select_child(env, tempscale, epsilon)
                 path.append(node.action)
 
+            # Backpropagation
             node._backpropagate(tempscale, reward, node, epsilon)
 
             if reward > max_reward:

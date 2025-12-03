@@ -78,11 +78,14 @@ class FPU_Search:
 
             while not env.is_terminal():
                 if node.untried_actions == [] and node.children:
+                    # Selection
                     node, reward = node._select_best_child(env)
                 else:
+                    # Expansion
                     node, reward = node._expand(env)
                 path.append(node.action)
 
+            # Backpropagation
             node._backpropagate(reward)
 
             if reward > max_reward:

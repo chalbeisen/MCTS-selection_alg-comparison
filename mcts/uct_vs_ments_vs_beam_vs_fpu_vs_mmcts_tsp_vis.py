@@ -75,7 +75,7 @@ if __name__ == "__main__":
     (100, 25), (25, 100), (75, -20)
     ]
 
-    iterations = 50
+    iterations = 1000
     base_temp = 1
     decay = 0.0
     epsilon = 2.0

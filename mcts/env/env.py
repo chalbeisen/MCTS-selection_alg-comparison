@@ -1,13 +1,5 @@
-"""A tiny environment interface used by the scaffolded UCT algorithm.
-
-This is a deliberately simple environment to enable tests and examples.
-It implements the minimum methods used by the UCT implementation:
-
-- clone()
-- legal_actions()
-- step(action) -> reward
-- is_terminal()
-
+"""
+A template to create a new environment
 """
 import copy
 import random
