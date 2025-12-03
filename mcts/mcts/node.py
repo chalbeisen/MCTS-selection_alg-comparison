@@ -29,7 +29,7 @@ class _Node:
         self.untried_actions.remove(action)
         return untried_actions
     
-    def _expand(self, env: Env) -> tuple["_Node", float]:
+    def expand(self, env: Env) -> tuple["_Node", float]:
         """
         Create new child node by sampling the first action from untried actions of current node. 
         """
@@ -38,7 +38,7 @@ class _Node:
         reward = env.step(action)
         return child, reward            
     
-    def _expand_random(self, env: Env) -> tuple["_Node", float]:
+    def expand_random(self, env: Env) -> tuple["_Node", float]:
         """
         Create new child node by sampling random action from untried actions of current node. 
         """
@@ -47,7 +47,7 @@ class _Node:
         reward = env.step(action)
         return child, reward  
     
-    def _expand_all_choose_random(self, env: Env) -> tuple["_Node", float]:
+    def expand_all_choose_random(self, env: Env) -> tuple["_Node", float]:
         """
         For each action in untried actions of current node create a new child node. 
         """
@@ -56,14 +56,14 @@ class _Node:
             self._create_new_child(action, env)
         action = random.choice(untried_actions)
         reward = env.step(action)
-        child = self._get_child_by_action(action)
+        child = self.get_child_by_action(action)
         return child, reward  
     
-    def _get_state(self) -> List[int]:
+    def get_state(self) -> List[int]:
         raise NotImplementedError("this method should be implemented by subclass")
 
-    def _get_child_by_action(self, action: int) -> Optional["_Node"]: 
+    def get_child_by_action(self, action: int) -> Optional["_Node"]: 
         return next((child for child in self.children if child.action == action), None)
     
-    def _backpropagate(self, reward: float):
+    def backpropagate(self, reward: float):
         return None

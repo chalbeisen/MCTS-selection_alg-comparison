@@ -26,7 +26,7 @@ class Dents_Node(_Node):
         self.HQ = {}
         self.HV = 0.0
 
-    def _boltzmann_policy(self, temp: float, epsilon: float) -> tuple[List[float], List[int]]:
+    def boltzmann_policy(self, temp: float, epsilon: float) -> tuple[List[float], List[int]]:
         actions = [child.action for child in self.children] + self.untried_actions
         if len(actions) == 0:
             return np.array([]), []
@@ -48,7 +48,7 @@ class Dents_Node(_Node):
         mixed_policy = (1 - lamb) * probs + lamb * uniform
         return mixed_policy, actions
 
-    def _create_new_child(self, action: int, env: Env) -> "_Node":
+    def create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
         state = self.state + [action] if self.state else [action]
         child = Dents_Node(parent=self, action=action, untried_actions=untried_actions, state = state)
@@ -56,20 +56,20 @@ class Dents_Node(_Node):
         child.state = self.state + [action] if self.state else [action]
         return child
 
-    def _select_action(self, temp: float, epsilon: float) -> int:
-        probs, actions = self._boltzmann_policy(temp, epsilon)
+    def select_action(self, temp: float, epsilon: float) -> int:
+        probs, actions = self.boltzmann_policy(temp, epsilon)
         return int(np.random.choice(actions, p=probs))
 
-    def _select_child(self, env: Env, temp: float, epsilon: float) -> tuple["_Node", float]:
-        action = self._select_action(temp, epsilon)
+    def select_child(self, env: Env, temp: float, epsilon: float) -> tuple["_Node", float]:
+        action = self.select_action(temp, epsilon)
         reward = env.step(action)
-        selected_child = self._get_child_by_action(action)
+        selected_child = self.get_child_by_action(action)
         if selected_child is None:
-            selected_child = self._create_new_child(action, env)
+            selected_child = self.create_new_child(action, env)
             selected_child.edge_reward = reward
         return selected_child, reward
 
-    def _backpropagate(self, temp: float, reward: float, node: "_Node", epsilon: float):
+    def backpropagate(self, temp: float, reward: float, node: "_Node", epsilon: float):
         node.V_hat = reward
         cur = node
         while cur is not None:
@@ -132,11 +132,11 @@ class DENTS_Search:
             while not env.is_terminal():
                 # Selection
                 tempscale = base_temp / (1.0 + decay * node.visits)
-                node, reward = node._select_child(env, tempscale, epsilon)
+                node, reward = node.select_child(env, tempscale, epsilon)
                 path.append(node.action)
 
             # Backpropagation
-            node._backpropagate(tempscale, reward, node, epsilon)
+            node.backpropagate(tempscale, reward, node, epsilon)
 
             if reward > max_reward:
                 max_reward = reward

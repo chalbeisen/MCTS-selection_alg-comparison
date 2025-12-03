@@ -31,15 +31,15 @@ class UCTNodeFPU(_Node):
         parent_visits = self.parent.visits if self.parent else 1
         return self.value + explore_const * math.sqrt(math.log(parent_visits + 1) / self.visits)
 
-    def _best_child(self, explore_const: float = math.sqrt(2.0)) -> "_Node":
+    def best_child(self, explore_const: float = math.sqrt(2.0)) -> "_Node":
         return max(self.children, key=lambda c: c.uct_score(explore_const))
 
-    def _select_best_child(self, env: Env) -> tuple["_Node", float]:
-        child = self._best_child()
+    def select_best_child(self, env: Env) -> tuple["_Node", float]:
+        child = self.best_child()
         reward = env.step(child.action)
         return child, reward
 
-    def _create_new_child(self, action: int, env: Env) -> "_Node":
+    def create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
         state = self.state + [action] if self.state else [action]
         child = UCTNodeFPU(self, action, untried_actions, fpu=self.fpu, state = state)
@@ -47,7 +47,7 @@ class UCTNodeFPU(_Node):
         child.state = child.parent.state + [action] if child.parent else [action]
         return child
 
-    def _backpropagate(self, reward: float) -> None:
+    def backpropagate(self, reward: float) -> None:
         self.visits += 1
         self.edge_reward = reward
         if self.value is None:
@@ -55,7 +55,7 @@ class UCTNodeFPU(_Node):
         else:
             self.value = (self.value * (self.visits - 1) + reward)
         if self.parent:
-            self.parent._backpropagate(reward)
+            self.parent.backpropagate(reward)
         return
 
 class FPU_Search:
@@ -79,14 +79,14 @@ class FPU_Search:
             while not env.is_terminal():
                 if node.untried_actions == [] and node.children:
                     # Selection
-                    node, reward = node._select_best_child(env)
+                    node, reward = node.select_best_child(env)
                 else:
                     # Expansion
-                    node, reward = node._expand(env)
+                    node, reward = node.expand(env)
                 path.append(node.action)
 
             # Backpropagation
-            node._backpropagate(reward)
+            node.backpropagate(reward)
 
             if reward > max_reward:
                 max_reward = reward

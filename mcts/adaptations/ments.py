@@ -33,7 +33,7 @@ class Ments_Node(_Node):
         super().__init__(parent, action, untried_actions, state)
         self.Qsft = 0
     
-    def _softmax_policy(self, temp: float, epsilon: float) -> tuple[List[float], List[int]]:
+    def softmax_policy(self, temp: float, epsilon: float) -> tuple[List[float], List[int]]:
         """
         Search policy following Boltzmann policy. 
         """
@@ -54,7 +54,7 @@ class Ments_Node(_Node):
         mixed_policy = (1 - lamb) * soft_probs + lamb * uniform
         return mixed_policy, actions
     
-    def _create_new_child(self, action: int, env: Env) -> "_Node":
+    def create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
         state = self.state + [action] if self.state else [action]
         child = Ments_Node(parent=self, action=action, untried_actions=untried_actions, state = state)
@@ -62,19 +62,19 @@ class Ments_Node(_Node):
         child.state = child.parent.state + [action] if child.parent else [action]
         return child
     
-    def _select_action(self, temp: float, epsilon: float) -> int:
-        probs, actions = self._softmax_policy(temp, epsilon)
+    def select_action(self, temp: float, epsilon: float) -> int:
+        probs, actions = self.softmax_policy(temp, epsilon)
         return int(np.random.choice(actions, p=probs))
 
-    def _select_child(self, env: Env, temp:float, epsilon: float) -> tuple["_Node", float]:
-        action = self._select_action(temp, epsilon)
+    def select_child(self, env: Env, temp:float, epsilon: float) -> tuple["_Node", float]:
+        action = self.select_action(temp, epsilon)
         reward = env.step(action)
-        selected_child = self._get_child_by_action(action)
+        selected_child = self.get_child_by_action(action)
         if selected_child is None:
-            selected_child = self._create_new_child(action, env)
+            selected_child = self.create_new_child(action, env)
         return selected_child, reward
 
-    def _backpropagate(self, reward: float, node: "_Node"):
+    def backpropagate(self, reward: float, node: "_Node"):
         """
         Hard (max) Bellman backup for sparse-reward environments.
         """
@@ -129,11 +129,11 @@ class MENTS_Search:
             while not env.is_terminal():
                 # Selection
                 tempscale = base_temp / (1.0 + decay * node.visits)
-                node, reward = node._select_child(env, tempscale, epsilon)
+                node, reward = node.select_child(env, tempscale, epsilon)
                 path.append(node.action)
 
             # Backpropagation
-            node._backpropagate(reward, node)
+            node.backpropagate(reward, node)
             
             if reward > max_reward:
                 max_reward = reward

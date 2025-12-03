@@ -15,27 +15,27 @@ class MCTS_Node(_Node):
     def __init__(self, parent: Optional["_Node"], action: Optional[int], untried_actions: List[int], state: List[int]):
         super().__init__(parent, action, untried_actions, state)
 
-    def _best_child_uct(self) -> "_Node":
+    def best_child_uct(self) -> "_Node":
         child = max(self.children, key=lambda c: c.uct_score())
         return child
     
-    def _best_child_N(self) -> "_Node":
+    def best_child_N(self) -> "_Node":
         child = max(self.children, key=lambda c: c.visits)
         return child
 
-    def _select_best_child(self, env: Env) -> tuple["_Node", float]:
-        child = self._best_child_uct()
+    def select_best_child(self, env: Env) -> tuple["_Node", float]:
+        child = self.best_child_uct()
         reward = env.step(child.action)
         return child, reward
 
-    def _create_new_child(self, action: int, env: Env) -> "_Node":
+    def create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
         state = self.state + [action] if self.state else [action]
         child = MCTS_Node(parent=self, action=action, untried_actions=untried_actions, state = state)
         self.children.append(child)
         return child
     
-    def _backpropagate(self, reward: float, env: Env) -> None:
+    def backpropagate(self, reward: float, env: Env) -> None:
         self.visits += 1
         self.edge_reward = reward
         if self.value is None:
@@ -43,7 +43,7 @@ class MCTS_Node(_Node):
         else:
             self.value += reward
         if self.parent:
-            self.parent._backpropagate(reward, env)
+            self.parent.backpropagate(reward, env)
         return
 
 class MCTS_Search():
@@ -72,14 +72,14 @@ class MCTS_Search():
             while not env.is_terminal():
                 if node.untried_actions == [] and node.children:
                     # Selection
-                    node, reward = node._select_best_child(env)
+                    node, reward = node.select_best_child(env)
                 else:
                     # Expansion
-                    node, reward = node._expand_random(env)
+                    node, reward = node.expand_random(env)
                 path.append(node.action)
 
             # Backpropagation
-            node._backpropagate(reward, env)
+            node.backpropagate(reward, env)
             
             if reward > max_reward:
                 max_reward = reward

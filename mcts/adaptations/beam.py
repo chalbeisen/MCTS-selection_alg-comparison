@@ -15,16 +15,16 @@ class BeamNode(_Node):
         super().__init__(parent, action, untried_actions, state)
         self.depth = 0 if parent is None else parent.depth + 1
 
-    def _best_child(self) -> "_Node":
+    def best_child(self) -> "_Node":
         child = max(self.children, key=lambda c: c.uct_score())
         return child
 
-    def _select_best_child(self, env: Env) -> tuple["_Node", float]:
-        child = self._best_child()
+    def select_best_child(self, env: Env) -> tuple["_Node", float]:
+        child = self.best_child()
         reward = env.step(child.action)
         return child, reward
     
-    def _create_new_child(self, action: int, env: Env) -> "_Node":
+    def create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
         state = self.state + [action] if self.state else [action]
         child = BeamNode(parent=self, action=action, untried_actions=untried_actions, state=state)
@@ -66,10 +66,10 @@ class BEAM_Search:
 
                 if node.untried_actions == [] and node.children:
                     # Selection by UCT
-                    node, reward = node._select_best_child(env)
+                    node, reward = node.select_best_child(env)
                 else:
                     # Expansion
-                    node, reward = node._expand_random(env)
+                    node, reward = node.expand_random(env)
 
                 path.append(node.action)
             depth_counter[node.depth] = depth_counter.get(node.depth, 0) + 1

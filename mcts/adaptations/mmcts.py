@@ -17,15 +17,15 @@ class MMCTS_Node(_Node):
                  state: List[int]):
         super().__init__(parent, action, untried_actions, state)
     
-    def _best_child_uct(self) -> "_Node":
+    def best_child_uct(self) -> "_Node":
         child = max(self.children, key=lambda c: c.uct_score())
         return child
     
-    def _best_child_N(self) -> "_Node":
+    def best_child_N(self) -> "_Node":
         child = max(self.children, key=lambda c: c.visits)
         return child
 
-    def _best_action_capped_distr(self, uct_inf_softening: float, p_max: float) -> "_Node":
+    def best_action_capped_distr(self, uct_inf_softening: float, p_max: float) -> "_Node":
         """
         Sample new action based on capped UCT distribution. 
         """
@@ -38,28 +38,28 @@ class MMCTS_Node(_Node):
         child_action = candidates[candidate_index]
         return child_action
     
-    def _create_new_child(self, action: int, env: Env) -> "_Node":
+    def create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
         state = self.state + [action] if self.state else [action]
         child = MMCTS_Node(parent=self, action=action, untried_actions=untried_actions, state = state)
         self.children.append(child)
         return child
     
-    def _backpropagate(self, reward: float) -> None:
+    def backpropagate(self, reward: float) -> None:
         self.visits += 1
         self.edge_reward = reward
         if self.parent is None:
             self.value = reward
         else:
             self.value += reward
-            self.parent._backpropagate(reward)
+            self.parent.backpropagate(reward)
         return
 
 class MMCTS_Search():
     def __init__(self, root_env: Env):
         self.root_env = root_env
 
-    def _exp_ratio(self, state_reward: float, proposal_reward: float, temperature: float = 1, objective: str = "min") -> float:
+    def exp_ratio(self, state_reward: float, proposal_reward: float, temperature: float = 1, objective: str = "min") -> float:
         """
         Sample new action based on capped UCT distribution. Uses a softmax function and caps the UCT values so that 
         they form a distribution with densities below a certain threshold.
@@ -79,7 +79,7 @@ class MMCTS_Search():
         """
         node = root
         for i, action in enumerate(state):
-            new_child = node._get_child_by_action(action)
+            new_child = node.get_child_by_action(action)
             if new_child is None:
                 new_child = node._create_new_child(action, env)
             new_child.state = state[:i+1]
@@ -138,13 +138,13 @@ class MMCTS_Search():
         env = self.root_env.clone()
         # Sample initial random path 
         while not env.is_terminal():
-            node, state_reward = node._expand(env)
+            node, state_reward = node.expand(env)
         current_state = node.state
 
         original_path = copy(node.state)
         max_reward = state_reward
         best_path = original_path
-        node._backpropagate(state_reward)
+        node.backpropagate(state_reward)
         path_over_iter.append(env.get_items_in_path(best_path))
         
         for i in range(iterations):
@@ -153,7 +153,7 @@ class MMCTS_Search():
 
             for j in range(len(original_path)):
                 # Sample proposal action for index j along original path
-                child_action = node._best_action_capped_distr(uct_inf_softening, p_max)
+                child_action = node.best_action_capped_distr(uct_inf_softening, p_max)
 
                 # Swap action at index j along original path with action of value child_action
                 proposed_path, reward = self.swap(current_state, j, child_action, env)
@@ -163,10 +163,10 @@ class MMCTS_Search():
                 node = self.go_to_state(proposed_path, root, env)
 
                 # Backpropagation
-                node._backpropagate(reward)
+                node.backpropagate(reward)
 
                 # Calculate acceptance probability for proposal state (Metropolis inspired)
-                ratio = self._exp_ratio(state_reward, reward, temperature=tempscale)
+                ratio = self.exp_ratio(state_reward, reward, temperature=tempscale)
 
                 # Accept or reject new proposal
                 accept_prob = min(1, ratio)
