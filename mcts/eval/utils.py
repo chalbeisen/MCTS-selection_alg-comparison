@@ -122,7 +122,7 @@ def draw_tree_bot(root: node._Node, env: Env, filename="tree", max_depth: int = 
         else:
             action = node.action
         value = node.explore_count and node.total_reward / node.explore_count
-        label = f"Action: {action}\nPlayer: {node.player}\nVisits: {node.explore_count}\nValue: {value:.2f}"
+        label = f"Action: {action}\nPlayer: {node.player}\nVisits: {node.explore_count}\nValue: {node.total_reward:.2f}"
         
         is_along_best_path = best_path is not None and action == best_path[0]
         color = "red" if is_along_best_path else "black"

@@ -41,7 +41,7 @@ class MCTS_Node(_Node):
         if self.value is None:
             self.value = reward
         else:
-            self.value = (self.value * (self.visits - 1) + reward) / self.visits
+            self.value += reward
         if self.parent:
             self.parent._backpropagate(reward, env)
         return
@@ -72,7 +72,7 @@ class MCTS_Node_TurnBased(MCTS_Node, _NodeTurnBased):
         # Detect root node
         if self.action is not None:
             curr_reward = self._determine_reward(reward, env)
-            self.value = (self.value * (self.visits - 1) + curr_reward) / self.visits
+            self.value += curr_reward
 
         if self.parent is not None:
             self.parent._backpropagate(reward, env)
@@ -84,11 +84,6 @@ class MCTS_Search():
         self.best_iteration = 0
         self.path_over_iter = []
         self.root_env = root_env
-
-    def rollout(self, node: "_Node", env: Env):
-        while not env.is_terminal():
-            node, reward = node._expand_random(env)
-        return node, reward
     
     def mcts_search_turn_based(self, iterations: int) -> int:
         if self.root_env.get_state() == []:

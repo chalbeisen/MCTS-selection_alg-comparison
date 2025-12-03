@@ -3,6 +3,7 @@ import math
 import copy
 import numpy as np
 from env.env import Env
+from copy import deepcopy
 
 
 class TSPEnv(Env):
@@ -19,7 +20,7 @@ class TSPEnv(Env):
         self.visited = []
 
     def get_legal_actions(self):
-        return self.legal_actions
+        return deepcopy(self.legal_actions)
         """if self.visited == []: 
             untried_actions = list(self.legal_actions)
         else:

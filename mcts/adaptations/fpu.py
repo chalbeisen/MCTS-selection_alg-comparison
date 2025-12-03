@@ -53,7 +53,7 @@ class UCTNodeFPU(_Node):
         if self.value is None:
             self.value = reward
         else:
-            self.value = (self.value * (self.visits - 1) + reward) / self.visits
+            self.value = (self.value * (self.visits - 1) + reward)
         if self.parent:
             self.parent._backpropagate(reward)
         return

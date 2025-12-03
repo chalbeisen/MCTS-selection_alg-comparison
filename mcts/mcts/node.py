@@ -16,25 +16,25 @@ class _Node:
         self.edge_reward = 0
         self.state = state
 
-    def uct_score(self, explore_const: float = math.sqrt(2)) -> float:
+    def uct_score(self, explore_const=math.sqrt(2)):
         if self.visits == 0:
             return float("inf")
-        parent_visits = self.parent.visits if self.parent else 1
-        return self.value + explore_const * math.sqrt(math.log(parent_visits) / self.visits)
+        return (self.value / self.visits) + explore_const * math.sqrt(math.log(self.parent.visits) / self.visits)
 
+   
     def update_untried_actions(self, action: int, env: Env) -> List[int]:
         untried_actions = env.get_legal_actions()
         self.untried_actions.remove(action)
         untried_actions.remove(action)
         return untried_actions
     
-    # working only for tsp
     """
+    # working only for tsp
     def update_untried_actions(self, action: int, env: Env) -> List[int]:
         untried_actions = [a for a in env.get_legal_actions() if a not in self.state and a!=action]
         self.untried_actions.remove(action)
         return untried_actions
-    """
+     """
     
     
     def _expand(self, env: Env) -> tuple["_Node", float]:

@@ -71,7 +71,7 @@ class MMCTS_Node(_Node):
         if self.parent is None:
             self.value = reward
         else:
-            self.value = (self.value * (self.visits - 1) + reward) / self.visits
+            self.value += reward
             self.parent._backpropagate(reward)
         return
 
@@ -83,10 +83,8 @@ class MMCTS_Node_TurnBased(MMCTS_Node, _NodeTurnBased):
     
     def _create_new_child(self, action: int, env: Env) -> "_Node":
         untried_actions = self.update_untried_actions(action, env)
-        next_player = env.get_current_player()
-        if next_player >=0 :
-            player = 1 - env.get_current_player()
-        else:
+        player = env.get_current_player()
+        if player < 0:
             player = 1 - self.player
         state = self.state + [action] if self.state else [action]
         child = MMCTS_Node_TurnBased(parent=self, action=action, untried_actions=untried_actions, state=state, player=player)
@@ -96,13 +94,11 @@ class MMCTS_Node_TurnBased(MMCTS_Node, _NodeTurnBased):
 
     def _backpropagate(self, reward: float, env: Env):
         self.visits += 1
-        node_reward = reward[self.player]
 
         # Detect root node
-        if self.value is None:
-            self.value = node_reward
-        else:
-            self.value = (self.value * (self.visits - 1) + node_reward) / self.visits
+        if self.action is not None:
+            curr_reward = self._determine_reward(reward, env)
+            self.value += curr_reward
 
         if self.parent is not None:
             self.parent._backpropagate(reward, env)
@@ -122,12 +118,13 @@ class MMCTS_Search():
         while not env.is_terminal():
             child_action = node._best_action_capped_distr(uct_inf_softening, p_max)
             proposed_path = proposed_path + [child_action]
-            reward = env.step(child_action)
-            # TODO: change order of create new child and env.step
+
             new_child = node._get_node_by_action(child_action)
             if new_child is None:
                 new_child = node._create_new_child(child_action, env)
             new_child.state = proposed_path
+
+            reward = env.step(child_action)
 
             node = new_child
         return proposed_path, reward, node
@@ -164,12 +161,12 @@ class MMCTS_Search():
     
     def mutate(self, node, original_path: List[int],  mutate_index: int, mutate_value: float, env: Env):
         new_path = original_path[:mutate_index] + [mutate_value]
-        reward = env.update(new_path)
-        # TODO: change order of create new child and env.update
+        
         new_child = node._get_node_by_action(mutate_value)
         if new_child is None:
             new_child = node._create_new_child(mutate_value, env)
 
+        reward = env.update(new_path)
         return new_path, reward
 
     def mmcts_search(self, iterations: int, uct_inf_softening: float, p_max: float, base_temp: float, decay: float) -> int:
@@ -230,7 +227,7 @@ class MMCTS_Search():
         if self.root_env.get_state() == []:
             player = None
         else:
-            player = self.root_env.get_current_player()
+            player = 1 - self.root_env.get_current_player()
 
         root = MMCTS_Node_TurnBased(parent=None, action=None, untried_actions=list(self.root_env.get_legal_actions()), state = [], player = player)
         node = root
@@ -246,8 +243,8 @@ class MMCTS_Search():
         for i in range(iterations):
             node = root
             env = self.root_env.clone()
+            player = node.player
             j = 0
-            player = 0
             while not env.is_terminal():
                 child_action = node._best_action_capped_distr(uct_inf_softening, p_max)
 
@@ -262,6 +259,8 @@ class MMCTS_Search():
                 proposed_path, reward = self.mutate(node, current_state, j, child_action, env)
                 tempscale = base_temp / (1.0 + decay * node.visits)
                 
+                """if proposed_path == [8]:
+                    print("test")"""
                 node = self.go_to_state(proposed_path, root, env)
                 if not env.is_terminal():
                     proposed_path, reward, node = self.complete_path_until_terminal(proposed_path, node, env, uct_inf_softening, p_max)
@@ -280,7 +279,7 @@ class MMCTS_Search():
                 player = 1 - player
                 j+=1
 
-        best_child_action = root._best_child_N().action
+        best_child_action = root._best_child_uct().action
         self.root_env.step(best_child_action)
         self.root_env.set_initial_state(self.root_env.get_state())
 
